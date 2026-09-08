@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Produção — Bia Uniformes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#F6F4EE;
+    --surface:#FFFFFF;
+    --ink:#23252A;
+    --ink-muted:#6B6F76;
+    --primary:#2B3A55;
+    --primary-dark:#1D2740;
+    --primary-soft:#E7EAF1;
+    --accent:#C98A2C;
+    --accent-dark:#A66F1E;
+    --accent-soft:#F4E6CC;
+    --success:#3F7A57;
+    --success-soft:#E1EFE6;
+    --danger:#B23A48;
+    --danger-soft:#F6E3E5;
+    --border:#E3DECF;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  h1,h2,h3,.display{font-family:'Space Grotesk','Inter',system-ui,sans-serif;}
+  input,select,textarea{user-select:text;}
+  button{font-family:inherit;cursor:pointer;}
+  #app{max-width:1100px;margin:0 auto;padding-bottom:48px;}
+
+  .topbar{
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:#fff;padding:18px 20px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+    border-radius:0 0 20px 20px;
+  }
+  .topbar .brand h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.2px;}
+  .topbar .brand p{margin:2px 0 0;font-size:12.5px;color:#C9D2E4;}
+  .topbar .clock{text-align:right;font-size:12.5px;color:#C9D2E4;}
+  .topbar .clock strong{display:block;font-size:15px;color:#fff;font-weight:600;}
+  .topbar-user{display:flex;align-items:center;gap:8px;margin-top:6px;justify-content:flex-end;}
+  .topbar-user span{font-size:11.5px;color:#C9D2E4;background:rgba(255,255,255,.12);padding:3px 9px;border-radius:999px;font-weight:600;}
+  .topbar-user button{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;}
+
+  .login-screen{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));padding:20px;z-index:100;
+  }
+  .login-card{
+    background:var(--surface);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:360px;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+  }
+  .login-card h1{margin:0 0 2px;font-size:22px;color:var(--primary);}
+  .login-sub{margin:0 0 20px;color:var(--ink-muted);font-size:13px;}
+  .login-erro{color:var(--danger);background:var(--danger-soft);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:600;margin-bottom:14px;}
+
+  .connbar{
+    display:none;align-items:center;gap:8px;
+    margin:12px 16px 0;padding:10px 14px;border-radius:10px;
+    background:var(--danger-soft);color:var(--danger);font-size:12.5px;font-weight:600;
+  }
+  .connbar.show{display:flex;}
+
+  .maintabs{display:flex;gap:8px;margin:16px 16px 0;}
+  .maintabs button{
+    flex:1;padding:13px 10px;border:none;border-radius:12px;
+    background:var(--surface);color:var(--ink-muted);font-weight:600;font-size:14.5px;
+    border:1.5px solid var(--border);transition:.15s;
+  }
+  .maintabs button.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+  .screen{display:none;padding:18px 16px 8px;}
+  .screen.active{display:block;}
+
+  .area-tabs{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .area-tab{
+    flex:1;min-width:150px;padding:14px 12px;border-radius:var(--radius);
+    border:1.5px solid var(--border);background:var(--surface);
+    display:flex;align-items:center;gap:10px;font-weight:600;font-size:14.5px;color:var(--ink);
+  }
+  .area-tab .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+  .area-tab.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dark);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;}
+  .card h2{font-size:16px;margin:0 0 14px;color:var(--primary);}
+  .card h3{font-size:14px;margin:0 0 10px;color:var(--ink);}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--ink-muted);margin-bottom:6px;}
+  .field input,.field select,.field textarea{
+    width:100%;padding:13px 12px;border-radius:10px;border:1.5px solid var(--border);
+    font-size:15.5px;background:#FCFBF8;color:var(--ink);font-family:inherit;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:560px){.row2{grid-template-columns:1fr;}}
+  .time-range-wrap{display:flex;align-items:center;gap:8px;}
+  .time-range-wrap input{flex:1;min-width:0;}
+  .time-range-sep{font-size:12.5px;color:var(--ink-muted);font-weight:600;flex-shrink:0;}
+
+  .size-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .size-btn{
+    min-width:46px;height:46px;padding:0 8px;border-radius:10px;
+    border:1.5px solid var(--border);background:#FCFBF8;color:var(--ink);
+    font-weight:700;font-size:14px;font-family:inherit;
+  }
+  .size-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  .btn{padding:13px 18px;border-radius:10px;border:none;font-weight:700;font-size:15px;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:active{background:var(--accent-dark);}
+  .btn-block{width:100%;}
+  .btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--ink-muted);}
+  .btn-danger-ghost{background:var(--danger-soft);color:var(--danger);border:none;padding:9px 12px;border-radius:8px;font-weight:600;font-size:13px;}
+  .btn-sm{padding:9px 14px;font-size:13.5px;border-radius:8px;}
+
+  .entry-row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:12px 4px;border-bottom:1px solid var(--border);font-size:14px;
+  }
+  .entry-row:last-child{border-bottom:none;}
+  .entry-main{display:flex;flex-direction:column;gap:2px;}
+  .entry-main strong{font-size:14.5px;}
+  .entry-main span{font-size:12.5px;color:var(--ink-muted);}
+  .entry-qty{font-weight:800;font-size:16px;color:var(--primary);margin-right:8px;white-space:nowrap;}
+  .empty-hint{color:var(--ink-muted);font-size:13.5px;padding:14px 4px;text-align:center;}
+
+  .chip-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .chip{
+    background:var(--primary-soft);color:var(--primary);padding:7px 8px 7px 14px;border-radius:999px;
+    display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;
+  }
+  .chip button{background:rgba(0,0,0,.08);border:none;width:20px;height:20px;border-radius:50%;color:var(--primary);font-size:13px;line-height:1;}
+  .add-row{display:flex;gap:8px;}
+  .add-row input{flex:1;}
+
+  .filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .pill{padding:9px 15px;border-radius:999px;border:1.5px solid var(--border);background:var(--surface);font-size:13.5px;font-weight:600;color:var(--ink-muted);}
+  .pill.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+  @media (max-width:560px){.stat-grid{grid-template-columns:1fr 1fr;}}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+  .stat-card .num{font-size:26px;font-weight:800;color:var(--primary);font-family:'Space Grotesk',sans-serif;}
+  .stat-card .label{font-size:12.5px;color:var(--ink-muted);margin-top:2px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;color:var(--ink-muted);font-weight:600;padding:8px 6px;border-bottom:1.5px solid var(--border);font-size:12.5px;white-space:nowrap;}
+  td{padding:9px 6px;border-bottom:1px solid var(--border);}
+  tr:last-child td{border-bottom:none;}
+  .table-scroll{overflow-x:auto;}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;
+    opacity:0;transition:.25s;pointer-events:none;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .note{font-size:12.5px;color:var(--ink-muted);background:var(--primary-soft);border-radius:10px;padding:10px 12px;margin-bottom:16px;}
+  select.grow-select option{color:var(--ink);}
+
+  .combo-wrap{position:relative;}
+  .combo-dropdown{
+    position:absolute;left:0;right:0;top:calc(100% + 4px);
+    background:var(--surface);border:1.5px solid var(--border);border-radius:10px;
+    max-height:260px;overflow-y:auto;z-index:30;
+    box-shadow:0 10px 28px rgba(0,0,0,.16);
+  }
+  .combo-item{padding:11px 14px;font-size:14.5px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--border);}
+  .combo-item:last-child{border-bottom:none;}
+  .combo-item:hover,.combo-item:active{background:var(--accent-soft);}
+  .combo-item.add-new{color:var(--accent-dark);font-weight:700;}
+  .combo-empty,.combo-hint{padding:12px 14px;color:var(--ink-muted);font-size:12.5px;text-align:center;}
+  .search-tipos{margin-bottom:10px;}
+
+  /* ===================== DASHBOARD (RELATÓRIO) ===================== */
+  .dash-hero{
+    position:relative;overflow:hidden;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(201,138,44,.35), transparent 55%),
+      radial-gradient(circle at 85% 0%, rgba(63,122,87,.28), transparent 50%),
+      linear-gradient(135deg,#131A2B,#1D2740 60%,#232F49);
+    border-radius:20px;padding:22px 20px 20px;margin-bottom:18px;color:#fff;
+    box-shadow:0 18px 40px rgba(19,26,43,.35);
+  }
+  .dash-hero::before{
+    content:'';position:absolute;inset:0;opacity:.5;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size:26px 26px;
+  }
+  .dash-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:relative;}
+  .dash-hero-label{font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;color:#9FADC9;font-weight:700;}
+  .dash-hero-num{font-family:'Space Grotesk',sans-serif;font-size:44px;font-weight:700;line-height:1.15;margin-top:2px;
+    background:linear-gradient(90deg,#fff,#E7C98A);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .dash-hero-sub{font-size:12.5px;color:#B7C1D9;margin-top:2px;}
+  .dash-hero-badge{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;white-space:nowrap;}
+  .dash-hero-badge.up{background:rgba(63,122,87,.28);color:#8FE0B0;}
+  .dash-hero-badge.down{background:rgba(178,58,72,.28);color:#F3A0AC;}
+  .dash-hero-insight{position:relative;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);
+    font-size:14px;color:#EDE7D9;font-weight:600;}
+  .dash-hero-link{position:relative;display:inline-block;margin-top:12px;font-size:12.5px;color:#E7C98A;font-weight:700;
+    text-decoration:none;background:none;border:none;padding:0;cursor:pointer;}
+
+  .dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px;}
+  @media (min-width:640px){.dash-grid{grid-template-columns:repeat(4,1fr);}}
+  .dash-team-card{
+    position:relative;text-align:left;cursor:pointer;
+    background:linear-gradient(160deg,#1B2338,#222C46);
+    border-radius:16px;padding:16px 14px;color:#fff;overflow:hidden;
+    border:1px solid rgba(255,255,255,.06);
+    box-shadow:0 10px 24px rgba(15,20,35,.28);
+    transition:transform .15s;
+  }
+  .dash-team-card:active{transform:scale(.97);}
+  .dash-team-card::before{
+    content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+    background:var(--team-color);box-shadow:0 0 14px var(--team-color);
+  }
+  .dash-team-icon{font-size:22px;margin-bottom:8px;}
+  .dash-team-name{font-size:13px;font-weight:700;color:#C9D2E4;margin-bottom:10px;}
+  .dash-team-num{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;color:#fff;line-height:1;}
+  .dash-team-num span{display:block;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#8D97AF;margin-top:4px;}
+  .dash-team-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:11.5px;color:#8D97AF;font-weight:600;}
+  .dash-trend{padding:2px 8px;border-radius:999px;font-weight:700;}
+  .dash-trend.up{background:rgba(63,122,87,.28);color:#8FE0B0;}
+  .dash-trend.down{background:rgba(178,58,72,.28);color:#F3A0AC;}
+
+  .dash-back{background:transparent;border:none;color:var(--primary);font-weight:700;font-size:14px;padding:4px 0 14px;cursor:pointer;}
+
+  .dash-detalhe-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .dash-detalhe-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;
+    background:var(--primary-soft);flex-shrink:0;}
+  .dash-detalhe-titulo{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;color:var(--primary);}
+
+  .insight-card{background:linear-gradient(160deg,#1B2338,#222C46);border:1px solid rgba(255,255,255,.06);}
+  .insight-card h3{color:#E7C98A;}
+  .insight-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13.5px;color:#DCE3F2;}
+  .insight-row:last-child{border-bottom:none;}
+  .insight-icon{font-size:15px;flex-shrink:0;}
+
+  .hora-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .hora-bar-row:last-child{margin-bottom:0;}
+  .hora-bar-label{width:56px;font-size:12.5px;font-weight:700;color:var(--ink-muted);flex-shrink:0;}
+  .hora-bar-track{flex:1;height:10px;border-radius:999px;background:var(--primary-soft);overflow:hidden;}
+  .hora-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-dark));}
+  .hora-bar-val{width:34px;text-align:right;font-size:12.5px;font-weight:700;color:var(--ink);flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h1>Painel de Produção</h1>
+    <p class="login-sub">Bia Uniformes</p>
+    <div class="field">
+      <label>Usuário</label>
+      <select id="loginUsuario">
+        <option value="costura">Costura</option>
+        <option value="caseado">Caseado e Botão</option>
+        <option value="revisao">Revisão e Dobra</option>
+        <option value="talhacao">Talhação</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="loginSenha" placeholder="Senha" autocomplete="off">
+    </div>
+    <div class="login-erro" id="loginErro" style="display:none;"></div>
+    <button class="btn btn-primary btn-block" id="btnLogin">Entrar</button>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>Painel de Produção</h1>
+      <p>Bia Uniformes</p>
+    </div>
+    <div class="clock">
+      <strong id="clockTime">--:--</strong>
+      <span id="clockDate">--/--/----</span>
+      <div class="topbar-user">
+        <span id="loggedRoleLabel"></span>
+        <button type="button" id="btnSair">Sair</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="connbar" id="connBar">⚠ Sem conexão com o armazenamento compartilhado — os lançamentos feitos agora não serão salvos nem compartilhados com os outros tablets.</div>
+
+  <div class="maintabs">
+    <button data-tab="lancar" class="active">Lançar</button>
+    <button data-tab="relatorio">Relatório</button>
+    <button data-tab="config">Equipe</button>
+  </div>
+
+  <!-- ===================== LANÇAR ===================== -->
+  <div class="screen active" id="screen-lancar">
+    <div class="area-tabs" id="areaTabsLancar"></div>
+
+    <div class="card">
+      <h2 id="formTitle">Novo lançamento</h2>
+      <div class="field">
+        <label>Funcionária</label>
+        <div style="display:flex;gap:8px;">
+          <select id="fFuncionaria" class="grow-select" style="flex:1;"></select>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnNovaFuncionariaInline" style="white-space:nowrap;">+ Nova</button>
+          <button type="button" class="btn btn-danger-ghost" id="btnRemoverFuncionariaInline" style="white-space:nowrap;">Remover</button>
+        </div>
+        <div class="add-row" id="novaFuncionariaInlineWrap" style="display:none;margin-top:8px;">
+          <input type="text" id="novaFuncionariaInlineInput" placeholder="Nome da nova funcionária">
+          <button type="button" class="btn btn-primary btn-sm" id="btnConfirmarNovaFuncionaria">Adicionar</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnCancelarNovaFuncionaria">Cancelar</button>
+        </div>
+        <div style="display:none;margin-top:8px;align-items:center;gap:8px;flex-wrap:wrap;" id="removerFuncionariaConfirmWrap">
+          <span style="font-size:13px;color:var(--danger);flex:1;min-width:160px;">Remover <strong id="removerFuncionariaNome"></strong> da equipe?</span>
+          <button type="button" class="btn btn-danger-ghost btn-sm" id="btnConfirmarRemoverFuncionaria">Confirmar</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnCancelarRemoverFuncionaria">Cancelar</button>
+        </div>
+      </div>
+      <div class="row2" id="rowDataExtra">
+        <div class="field">
+          <label>Data</label>
+          <input type="date" id="fData">
+        </div>
+        <div class="field" id="fCampoExtraWrap">
+          <label id="fCampoExtraLabel">Horário / Período</label>
+          <input type="text" id="fCampoExtraInput" placeholder="08:00 - 10:30">
+          <select id="fCampoExtraSelect" style="display:none;"></select>
+          <input type="text" id="fCampoExtraOutro" placeholder="Digite..." style="display:none;margin-top:8px;">
+          <div class="time-range-wrap" id="fCampoExtraTimeRange" style="display:none;">
+            <input type="time" id="fCampoExtraHoraDe">
+            <span class="time-range-sep">até</span>
+            <input type="time" id="fCampoExtraHoraAte">
+          </div>
+        </div>
+      </div>
+
+      <div class="field" id="slotBWrap" style="display:none;">
+        <label id="slotBLabel">Tipo de peça</label>
+        <select id="slotBSelect"></select>
+        <input type="text" id="slotBOutro" placeholder="Digite..." style="display:none;margin-top:8px;">
+        <div class="combo-wrap" id="slotBComboWrap" style="display:none;">
+          <input type="text" id="fPecaBusca" placeholder="Digite para buscar a peça..." autocomplete="off">
+          <div class="combo-dropdown" id="fPecaDropdown" hidden></div>
+        </div>
+      </div>
+
+      <div class="field" id="fTamanhoWrap" style="display:none;">
+        <label>Tamanho</label>
+        <div class="size-grid" id="fTamanhoGrid"></div>
+      </div>
+
+      <div class="field" id="fOperacaoWrap" style="display:none;">
+        <label>Operação</label>
+        <div class="combo-wrap">
+          <input type="text" id="fOperacaoBusca" placeholder="Digite para buscar a operação..." autocomplete="off">
+          <div class="combo-dropdown" id="fOperacaoDropdown" hidden></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Quantidade</label>
+        <input type="number" id="fQuantidade" inputmode="numeric" placeholder="0">
+      </div>
+      <div class="field">
+        <label>Observações (opcional)</label>
+        <input type="text" id="fObs" placeholder="Ex: entrada às 08h30">
+      </div>
+      <button class="btn btn-primary btn-block" id="btnSalvar">Salvar lançamento</button>
+    </div>
+
+    <div class="card">
+      <h3 id="todayTitle">Lançamentos de hoje</h3>
+      <div id="todayList"></div>
+    </div>
+  </div>
+
+  <!-- ===================== RELATÓRIO ===================== -->
+  <div class="screen" id="screen-relatorio">
+
+    <!-- DASHBOARD (visão geral por equipe) -->
+    <div id="dashHome">
+      <div class="dash-hero">
+        <div class="dash-hero-top">
+          <div>
+            <div class="dash-hero-label">Visão geral · hoje</div>
+            <div class="dash-hero-num" id="dashHeroNum">0</div>
+            <div class="dash-hero-sub">peças produzidas por todas as equipes</div>
+          </div>
+          <div class="dash-hero-badge" id="dashHeroBadge"></div>
+        </div>
+        <div class="dash-hero-insight" id="dashHeroInsight">Carregando...</div>
+        <button class="dash-hero-link" id="btnVerTudo">Ver todos os lançamentos e exportar →</button>
+      </div>
+
+      <div class="dash-grid" id="dashGrid"></div>
+    </div>
+
+    <!-- DETALHE DA EQUIPE -->
+    <div id="dashDetalhe" style="display:none;">
+      <button class="dash-back" id="btnDashBack">← Todas as equipes</button>
+
+      <div class="dash-detalhe-head">
+        <div class="dash-detalhe-icon" id="dashDetalheIcon">🏭</div>
+        <div class="dash-detalhe-titulo" id="dashDetalheTitulo">Equipe</div>
+      </div>
+
+      <div class="filter-row" id="periodoFiltro">
+        <button class="pill active" data-periodo="hoje">Hoje</button>
+        <button class="pill" data-periodo="semana">Últimos 7 dias</button>
+        <button class="pill" data-periodo="mes">Este mês</button>
+        <button class="pill" data-periodo="tudo">Tudo</button>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="statTotalPecas">0</div><div class="label">Peças no período</div></div>
+        <div class="stat-card"><div class="num" id="statTotalLanc">0</div><div class="label">Lançamentos</div></div>
+        <div class="stat-card"><div class="num" id="statPessoas">0</div><div class="label">Pessoas ativas</div></div>
+      </div>
+
+      <div class="card" id="cardPeriodoCaseado" style="display:none;">
+        <h3>Caseado e Botão — por período</h3>
+        <div class="stat-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="stat-card"><div class="num" id="statManha">0</div><div class="label">Manhã</div></div>
+          <div class="stat-card"><div class="num" id="statTarde">0</div><div class="label">Tarde</div></div>
+        </div>
+      </div>
+
+      <div class="card insight-card" id="cardInsights">
+        <h3>✨ Análise automática</h3>
+        <div id="insightsList"></div>
+      </div>
+
+      <div class="card" id="cardHorarios" style="display:none;">
+        <h3>Comparativo por horário do dia</h3>
+        <div id="horaBars"></div>
+      </div>
+
+      <div class="card" id="cardChartHorarios" style="display:none;">
+        <h3>Produção por data e horário</h3>
+        <div style="height:240px;"><canvas id="chartCosturaHorarios"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3>Produção por funcionária</h3>
+        <div style="height:220px;"><canvas id="chartFuncionaria"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3>Detalhamento por funcionária</h3>
+        <div class="table-scroll">
+        <table>
+          <thead id="theadDetalhe"></thead>
+          <tbody id="tabelaDetalhe"></tbody>
+        </table>
+        </div>
+        <div class="empty-hint" id="tabelaVazia" style="display:none;">Nenhum lançamento neste período.</div>
+      </div>
+
+      <div class="card">
+        <h3>Lançamentos do período</h3>
+        <div class="table-scroll">
+        <table>
+          <thead id="theadLancamentos"></thead>
+          <tbody id="tabelaLancamentos"></tbody>
+        </table>
+        </div>
+        <div class="empty-hint" id="tabelaLancamentosVazia" style="display:none;">Nenhum lançamento neste período.</div>
+        <button class="btn btn-ghost btn-sm" id="btnExportar" style="margin-top:14px;">Exportar CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CONFIG (EQUIPE) ===================== -->
+  <div class="screen" id="screen-config">
+    <div class="area-tabs" id="areaTabsConfig"></div>
+
+    <div class="card">
+      <h3>Funcionárias desta área</h3>
+      <div class="chip-list" id="chipsEquipe"></div>
+      <div class="add-row">
+        <input type="text" id="novaFuncionaria" placeholder="Nome da funcionária">
+        <button class="btn btn-primary btn-sm" id="btnAddFuncionaria">Adicionar</button>
+      </div>
+    </div>
+
+    <div class="card" id="cardTipos" style="display:none;">
+      <h3 id="tituloTipos">Tipos de peça</h3>
+      <input type="text" id="buscaTipos" class="search-tipos" placeholder="Buscar...">
+      <div class="chip-list" id="chipsTipos"></div>
+      <div class="add-row">
+        <input type="text" id="novoTipo" placeholder="Ex: Camiseta, Calça...">
+        <button class="btn btn-primary btn-sm" id="btnAddTipo">Adicionar</button>
+      </div>
+    </div>
+
+    <div class="card" id="cardOpcoesExtra" style="display:none;">
+      <h3 id="opcoesExtraTitulo">Opções</h3>
+      <div class="chip-list" id="chipsExtra"></div>
+      <div class="add-row">
+        <input type="text" id="novoExtra" placeholder="Nova opção">
+        <button class="btn btn-primary btn-sm" id="btnAddExtra">Adicionar</button>
+      </div>
+    </div>
+
+    <div class="card" id="cardOperacoes" style="display:none;">
+      <h3>Operações por modelo</h3>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Modelo</label>
+        <select id="selectModeloOperacoes" class="grow-select"></select>
+      </div>
+      <input type="text" id="buscaOperacoes" class="search-tipos" placeholder="Buscar...">
+      <div class="chip-list" id="chipsOperacoes"></div>
+      <div class="add-row">
+        <input type="text" id="novaOperacao" placeholder="Adicionar operação">
+        <button class="btn btn-primary btn-sm" id="btnAddOperacao">Adicionar</button>
+      </div>
+    </div>
+
+    <div class="note">Os dados deste painel ficam salvos automaticamente e são compartilhados entre todos os tablets que abrirem este mesmo link — ideal para várias pessoas lançando produção ao mesmo tempo.</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------------------------------------------------------------
+// CATÁLOGO DE PEÇAS DA TALHAÇÃO (gerado a partir da planilha
+// "1  PLANILHA NOVA ORGANIZADA.xlsx", aba TODOS — 04/09/2026)
+// ---------------------------------------------------------------
+const PECAS_TALHACAO = ["AVENTAL DUPLA FACE S/ BOLSO", "AVENTAL DUPLA FACE S/ BOLSO BRANCO SEPAT", "AVENTAL DUPLA FACE S/ BOLSO BRANCO ORBENK", "AVENTAL DUPLA FACE S/ BOLSO AZUL ORBENK", "AVENTAL DUPLA FACE S/ BOLSO PRETO ORBENK", "AVENTAL DUPLA FACE S/ BOLSO BRANCO BORD. GRÃO CAFÉ", "AVENTAL DUPLA FACE C/ BOLSO", "AVENTAL DUPLA FACE C/ BOLSO BRANCO SEPAT", "AVENTAL DUPLA FACE C/ BOLSO BRANCO ORBENK", "AVENTAL DUPLA FACE C/ BOLSO AZUL ORBENK", "AVENTAL DUPLA FACE C/ BOLSO PRETO ORBENK", "AVENTAL FRONTAL S/ BOLSO", "AVENTAL FRONTAL S/ BOLSO BRANCO ORBENK", "AVENTAL FRONTAL S/ BOLSO AZUL ORBENK", "AVENTAL FRONTAL S/ BOLSO PRETO SEPAT", "AVENTAL FRONTAL S/ BOLSO BRANCO BRIM ORBENK", "AVENTAL FRONTAL C/ BOLSO", "AVENTAL FRONTAL C/ BOLSO BRANCO ORBENK", "AVENTAL FRONTAL C/ BOLSO AZUL ORBENK", "AVENTAL FRONTAL C/ BOLSO PRETO SEPAT", "AVENTAL CINTURA", "AVENTAL CINTURA BRANCO ORBENK", "AVENTAL CINTURA AZUL ORBENK", "AVENTAL CINTURA PRETO ORBENK", "AVENTAL MINI CHEFE BORDADO SEPAT", "BANDANA", "BATA", "BATINA", "BERMUDA ELÁSTICO COM CORDÃO BRIM", "BERMUDA ELÁSTICO COM CORDÃO AZUL", "BERMUDA ELÁSTICO COM CORDÃO ORBENK AZUL", "BERMUDA ELÁSTICO COM CORDÃO HELANCA", "BERMUDA ELÁSTICO COM CORDÃO TACTEL SEM FORRO", "BERMUDA ELÁSTICO COM CORDÃO TACTEL COM FORRO", "BERMUDA ZIPER MEIO ELÁSTICO BRIM", "BERMUDA ZIPER MEIO ELÁSTICO ORBENK AZUL", "BERMUDA TÁTICA RIP STOP", "BERMUDA JEANS FEM TRADICIONAL AZUL", "BERMUDA JEANS MASC TRADICIONAL AZUL", "BERMUDA SOCIAL FEM LISA", "BERMUDA SOCIAL MASC SPANDEX", "BERMUDA SOCIAL/SPORT MASC", "BLAZER FEMININO SPANDEX", "BLAZER FEMININO SPANDEX SEPAT CINZA", "BLAZER FEMININO SPANDEX SEPAT PRETO", "BLAZER FEMININO ORBENK SPANDEX AZUL NOITE", "BLAZER MASCULINO SPANDEX", "BLAZER MASCULINO SPANDEX SEPAT PRETO", "BLUSA", "BONÉ", "BONÉ OPERACIONAL 6 GOMOS ESTAMPADO AZUL BRIM ORBENK", "BONÉ OPERACIONAL ÁRABE ESTAMPADO AZUL BRIM ORBENK", "BONÉ TÁTICO BORDADO RIP STOP AZUL ORBENK", "BONÉ TÁTICO BORDADO RIP STOP PRETO ORBENK", "BONE BORDADO BRIM CINZA SEPAT", "CACHECOL", "CALÇA ELÁSTICO COM CORDÃO BRIM", "CALÇA ELÁSTICO COM CORDÃO BRIM ORBENK AZUL", "CALÇA ELÁSTICO COM CORDÃO BRIM ORBENK BRANCA", "CALÇA ELÁSTICO COM CORDÃO BRIM ORBENK CINZA", "CALÇA ELÁSTICO COM CORDÃO C/REFLETIVO ORBENK AZUL", "CALÇA ELÁSTICO COM CORDÃO BRIM 100% ALG SEPAT BRANCA", "CALÇA ELÁSTICO COM CORDÃO BRIM 100% ALG (ESTOQUISTA) SEPAT CINZA", "CALÇA ELÁSTICO COM CORDÃO BRIM 100% ALG PROFISER BRANCA", "CALÇA ELÁSTICO COM CORDÃO BRIM PROFISER AZUL", "CALÇA ELÁSTICO COM CORDÃO BRIM 100% ALG SEPAT C/LOGO GRANDE BRANCA", "CALÇA ELÁSTICO COM CORDÃO HELANCA", "CALÇA ELÁSTICO COM CORDÃO HELANCA ORBENK PRETA", "CALÇA ELÁSTICO COM CORDÃO HELANCA SEPAT VERDE MUSGO", "CALÇA ELÁSTICO COM CORDÃO TACTEL SEM FORRO", "CALÇA ELÁSTICO COM CORDÃO TACTEL SEM FORRO ORBENK AZUL", "CALÇA ELÁSTICO COM CORDÃO TACTEL COM FORRO", "CALÇA ZIPER MEIO ELÁSTICO", "CALÇA ZIPER MEIO ELÁSTICO ORBENK BRANCO", "CALÇA ZIPER MEIO ELÁSTICO ORBENK AZUL", "CALÇA TÁTICA RIP STOP", "CALÇA TÁTICA ORBENK RIP STOP AZUL", "CALÇA TÁTICA ORBENK RIP STOP PRETA", "CALÇA POLÍCIA FEDERAL ORBENK RIP STOP PRETA", "CALÇA JEANS FEM TRADICIONAL AZUL", "CALÇA JEANS FEM TRADICIONAL ORBENK AZUL", "CALÇA JEANS MASC TRADICIONAL AZUL", "CALÇA JEANS MASC TRADICIONAL ORBENK AZUL", "CALÇA SOCIAL FEM LISA", "CALÇA SOCIAL FEM LISA SPANDEX SEPAT CINZA", "CALÇA SOCIAL FEM LISA SPANDEX SEPAT PRETA", "CALÇA SOCIAL FEM LISA SPANDEX GLOBALSEG MARINHO NOITE", "CALÇA SOCIAL MASC SPANDEX", "CALÇA SOCIAL MASC SPANDEX (NUTRICIONISTA MASC E GARÇON) SEPAT PRETA", "CALÇA SOCIAL/SPORT MASC", "CALÇA SOCIAL/SPORT MASC SARJA (MOTORISTA) SEPAT CINZA", "CAMISA GOLA POLO FEM MC", "CAMISA GOLA POLO FEM MC PIQUET PV C/DETALHES CHUMBO (ESTOQUISTA) SEPAT CINZA", "CAMISA GOLA POLO FEM ML", "CAMISA GOLA POLO MASC MC", "CAMISA GOLA POLO MASC MC PIQUET PV C/DETALHES CHUMBO (ESTOQUISTA) SEPAT CINZA", "CAMISA GOLA POLO MASC MC PIQUET PV C/DETALHES BORDÔ (ADM/CAIXA) SEPAT BRANCA", "CAMISA GOLA POLO MC ORBENK AZUL", "CAMISA GOLA POLO MC ORBENK BRANCA", "CAMISA GOLA POLO MC ORBENK CINZA", "CAMISA GOLA POLO MC ORBENK (DETRAN SC) AZUL", "CAMISA GOLA POLO MC ORBENK PIQUE 100%ALG AZUL", "CAMISA GOLA POLO MC ORBENK PIQUE 100%ALG BRANCA", "CAMISA GOLA POLO MASC ML", "CAMISA GOLA POLO ML ORBENK AZUL", "CAMISA GOLA POLO ML ORBENK BRANCA", "CAMISA GOLA POLO ML ORBENK PIQUE 100%ALG AZUL", "CAMISA GOLA POLO ML ORBENK PIQUE 100%ALG BRANCA", "CAMISA SOCIAL MASC MC", "CAMISA SOCIAL MASC MC (ORBENK ADMINISTRAÇÃO) AZUL", "CAMISA SOCIAL MASC MC (ORBENK ADMINISTRAÇÃO) BRANCA", "CAMISA SOCIAL MASC MC C/ BOLSO (SEPAT MOTORISTA) CINZA", "CAMISA SOCIAL MASC MC (SEPAT ADMINISTRAÇÃO) AZUL", "CAMISA SOCIAL MASC MC RECEPÇÃO GLOBALSEG BRANCA", "CAMISA SOCIAL MASC ML", "CAMISA SOCIAL MASC ML S/ BOLSO SEPAT AZUL", "CAMISA SOCIAL MASC ML S/ BOLSO (SEPAT NUTRICIONISTA, GARÇON) BRANCA", "CAMISA SOCIAL MASC ML S/ BOLSO (SEPAT SUPERVISOR) CINZA", "CAMISA TÁTICA MC RIP STOP", "CAMISA TÁTICA MC RIP STOP ORBENK AZUL", "CAMISA TÁTICA MC RIP STOP ORBENK PRETA", "CAMISA TÁTICA ML RIP STOP", "CAMISA TÁTICA ML RIP STOP ORBENK AZUL", "CAMISA TÁTICA ML RIP STOP ORBENK PRETA", "CAMISETA BABYLOOK FEM MC MM 100%ALG", "CAMISETA BABYLOOK FEM MC MM 100%ALG SEPAT BRANCA", "CAMISETA BABYLOOK FEM MC MM 100%ALG (BORD.GRÃO CAFÉ) PRETA", "CAMISETA BABYLOOK FEM MC MM PV", "CAMISETA BABYLOOK FEM ML MM 100%ALG", "CAMISETA BABYLOOK FEM ML MM PV", "CAMISETA BÁSICA MC MM100%ALG", "CAMISETA BÁSICA MC MM 100% ALG SEPAT BRANCA", "CAMISETA BÁSICA MC MM 100% ALG ORBENK BRANCA", "CAMISETA BÁSICA MC MM 100%ALG EVENTOS SEPAT VERMELHA", "CAMISETA BÁSICA MC MM 100%ALG TALENTOS SEPAT PRETA", "CAMISETA BÁSICA MC MM 100% ALG TALENTOS SEPAT PRETA", "CAMISETA BÁSICA MC MM 100%ALG SEPAT C/LOGO NAS COSTAS BRANCA", "CAMISETA BÁSICA MC MM PV", "CAMISETA BÁSICA MC MM PV ORBENK BRANCA", "CAMISETA BÁSICA MC MM PV ORBENK AZUL", "CAMISETA BÁSICA MC MM PV REFLETIVO ORBENK AZUL", "CAMISETA BÁSICA MC MM PV ORBENK CINZA", "CAMISETA BÁSICA MC MM PV SEPAT VERDE", "CAMISETA BÁSICA MC MM PV ''CARREGADOR'' ORBENK AZUL", "CAMISETA BÁSICA MC MM PV PROFISER BRANCA", "CAMISETA BÁSICA MC MM PV \"MEDIANEIRA\" ORBENK AZUL", "CAMISETA BÁSICA MC MM PV PROFISER AZUL", "CAMISETA BÁSICA ML MM 100% ALG", "CAMISETA BÁSICA ML MM 100% ALG SEPAT BRANCA", "CAMISETA BÁSICA ML MM 100% ALG ORBENK BRANCA", "CAMISETA BÁSICA ML MM 100%ALG SEPAT C/LOGO BRANCA", "CAMISETA BÁSICA ML MM PV", "CAMISETA BÁSICA ML MM PV ORBENK BRANCA", "CAMISETA BÁSICA ML MM PV ORBENK AZUL", "CAMISETA BÁSICA ML MM PV REFLETIVO ORBENK AZUL", "CAMISETA BÁSICA ML MM PV ORBENK CINZA", "CAMISETA BÁSICA ML MM PV SEPAT VERDE", "CAMISETA BÁSICA ML MM PV ''CARREGADOR'' ORBENK AZUL", "CAMISETA BÁSICA ML MM PV \"MEDIANEIRA\" ORBENK AZUL", "CAMISETA BÁSICA ML MM PV PROFISER AZUL", "CAMISETA BÁSICA ML MM PV PROFISER BRANCA", "CAMISETE FEM MC TRICOLINE", "CAMISETE FEM MC (ADMINISTRAÇÃO) SEPAT AZUL", "CAMISETE FEM MC (COPEIRA) SEPAT BRANCA", "CAMISETE FEM MC RECEPÇÃO GLOBALSEG BRANCA", "CAMISETE FEM ML TRICOLINE", "CAMISETE FEM ML (NUTRICIONISTA) (PÉ DE GOLA+PUNHO+REVEL EM PRETO) SEPAT BRANCA", "CAMISETE FEM ML (SUPERVISORA) (PÉ DE GOLA+PUNHO EM CINZA ESCURO E REVEL EM CHUMBO ESCURO) SEPAT CINZA", "CAPUZ", "CASACO", "CHAPEU CHEF DE COZINHA SEPAT BRANCO", "CHAPEU CHEF DE COZINHA SEPAT PRETO", "CHAPEU CHEF DE COZINHA SEPAT XADREZ", "CHAPEU CHEF DE COZINHA ORBENK BRANCO", "CHAPEU CHEF DE COZINHA ORBENK PRETO", "CHAPEU CHEF DE COZINHA ORBENK XADREX", "CHAPEU CHEF DE COZINHA PROFISER BRANCO", "CHAPEU CHEF DE COZINHA PROFISER PRETO", "CHAPEU CHEF DE COZINHA PROFISER XADREZ", "CINTO", "COLETE FEM SPANDEX", "COLETE FEM SEPAT SPANDEX CINZA", "COLETE FEM SEPAT SPANDEX PRETO", "COLETE MASC", "DOLMA CHEF DE COZINHA", "DOLMA CHEF DE COZINHA ES", "DOLMA CHEF DE COZINHA MANGA 7/8 (COM FILETES PRETO) BRANCO", "E-CHARPE", "FARDA", "GANDOLA ML", "GANDOLA TÁTICA SAMU ORBENK SEGURANÇA ML AZUL", "GRAVATA", "GUARDA PÓ S/ MANGA", "GUARDA PÓ MC", "GUARDA PÓ MC OPERACIONAL ORBENK BRIM BRANCO", "GUARDA PÓ ML", "JALECO S/ MANGA", "JALECO OPERACIONAL S/ MANGA OXFORDINE SMAB AZUL", "JALECO MC", "JALECO OPERACIONAL MC ORBENK BRIM AZUL", "JALECO OPERACIONAL MC OXFORDINI SMAB AZUL", "JALECO SMAB C/ MANGA", "JALECO SMAB S/ MANGA", "JALECO MC BRIM 100%ALG SEPAT BRANCO", "JALECO COPEIRA MC ORBENK SPANDEX TWO WAY PRETO", "JALECO GOLA PADRE MC ORBENK AZUL", "JALECO OPERACIONAL MC ORBENK BRIM HU UEPG BRANCO", "JALECO ML", "JALECO OPERACIONAL ML ORBENK BRIM AZUL", "JALECO OPERACIONAL ML ORBENK BRIM BRANCO", "JALECO NUTRICIONISTA ML (3 BOLSOS+DETALHES BORDÔ) SEPAT BRANCO", "JALECO ML BRIM 100%ALG SEPAT BRANCO", "JALECO GOLA PADRE ML ORBENK AZUL", "JALECO OPERACIONAL ML ORBENK BRIM HU UEPG BRANCO", "JAQUETA RAGLAN", "JAQUETA OPERACIONAL ORBENK BRIM UNISEX AZUL", "JAQUETA OPERACIONAL ORBENK BRIM UNISEX BRANCA", "JAQUETA OPERACIONAL PROFISER BRIM UNISSEX BRANCA", "JAQUETA OPERACIONAL PROFISER BRIM UNISSEX AZUL", "JAQUETA CORTA VENTO SEM CAPUZ FORRADA", "JAQUETA CORTA VENTO SEM CAPUZ FORRADA EM TACTEL", "JAQUETA CORTA VENTO SEM CAPUZ FORRADA TACTELL", "JAQUETA SEM CAPUZ COM FORRO TÉRMICO IMPERMEÁVEL", "JAQUETA SEM CAPUZ ORBENK FORRO FAILET TACTELL AZUL", "JAQUETA SEM CAPUZ ORBENK FORRO FAILET TACTELL PRETA", "JAQUETA SEM CAPUZ FORRO TÉRMICO 3 BOLSOS TACTEL", "JAQUETA UNISEX SEM CAPUZ ORBENK NYLON AZUL", "JAQUETA UNISEX SEM CAPUZ ORBENK NYLON PRETA", "JAQUETA COM CAPUZ COM FORRO TÉRMICO IMPERMEÁVEL", "JAQUETA TÁTICA ORBENK NYLON IMPERMEÁVEL AZUL", "JAQUETA TÁTICA ORBENK NYLON IMPERMEÁVEL PRETA", "JAQUETA SEM CAPUZ GOLA ALTA SEPAT FORRO METALASSÊ NYLON IMPERMEÁVEL PRETA", "JAQUETA SEM CAPUZ OBRA PRIMA FORRO METALASSÊ NYLON IMPERMEÁVEL PRETA", "JAQUETA SEM CAPUZ CTE CACTOS FORRO TÉRMICO 3 BOLSOS IMPERMEÁVEL PRETA", "JAQUETA COM CAPUZ COM FORRO TÉRMICO 3 BOLSOS EM TACTELL", "JAQUETA COM CAPUZ ORBENK FORRO METALASSÊ NYLON AZUL", "JAQUETA COM CAPUZ ORBENK FORRO METALASSÊ NYLON PRETA", "LAÇO", "MACACÃO OPERACIONAL MC", "MACACÃO OPERACIONAL ML", "MACACÃO OPERACIONAL ML ORBENK BRIM AZUL", "MACACÃO OPERACIONAL ML ORBENK SEGURANÇA RIP STOP AZUL", "MANGOTE", "MÁSCARA DE TECIDO CEDRO HOSPITALAR HIGIENIZÁVEL 100%ALG BRANCA", "MOLETOM BLUSÃO", "MOLETOM BLUSÃO ORBENK AZUL", "MOLETOM BLUSÃO ORBENK BRANCO", "MOLETOM BLUSÃO ORBENK CINZA", "MOLETOM CALÇA", "MOLETOM JAQUETA ZIPER CAPUZ BOLSO LATERAL EMBUTIDO", "MOLETOM JAQUETA UNISEX ORBENK COM ZIPER E CAPUZ AZUL", "MOLETOM JAQUETA UNISEX ORBENK COM ZIPER E CAPUZ BRANCO", "PERNEIRA", "PONCHO", "SAIA", "SHORTS/CALÇÃO", "SOBRETUDO FEM. 3/4 LÃ", "SOBRETUDO FEM. 3/4 LÃ ORBENK", "SOBRETUDO MASC 3/4 LÃ", "SOBRETUDO MASC 3/4 LÃ ORBENK", "SUETER LÃ FEM", "SUETER LÃ MASC", "SUETER LÃ UNISEX", "SUETER LÃ 100% ACRILICA BORDADO ORBENK UNISEX AZUL", "SUETER LÃ 100% ACRILICA BORDADO ORBENK UNISEX BRANCO", "SUETER LÃ 100% ACRILICA BORDADO ORBENK UNISEX PRETO", "SUETER LÃ 100% ACRILICA BORDADO SEPAT UNISEX BRANCO", "SUETER LÃ 100% ACRILICA BORDADO SEPAT UNISEX PRETO", "TERNO MASC", "TOUCA", "TOUCA DE COZINHA EM SUPLEX AZUL ORBENK", "TOUCA DE COZINHA EM SUPLEX BRANCA ORBENK", "TOUCA DE COZINHA EM SUPLEX PRETA ORBENK", "TOUCA DE COZINHA REDINHA COM LAÇO BORDADO GRÃO CAFÉ", "TOUCA DE COZINHA REDINHA COM LAÇO BORDADO SEPAT BRANCA", "TOUCA DE COZINHA REDINHA COM LAÇO BORDADO SEPAT PRETA", "TOUCA DE COZINHA REDINHA COM LAÇO BORDADO ORBENK BRANCA", "TOUCA DE COZINHA REDINHA COM LAÇO BORDADO ORBENK PRETA", "VESTIDO", "XALÈ"];
+const SIZES_BY_ITEM = {"BERMUDA ELÁSTICO COM CORDÃO BRIM": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "BERMUDA ELÁSTICO COM CORDÃO AZUL": ["PP"], "BERMUDA ELÁSTICO COM CORDÃO ORBENK AZUL": ["P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "BERMUDA ZIPER MEIO ELÁSTICO BRIM": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "BERMUDA ZIPER MEIO ELÁSTICO ORBENK AZUL": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "BLAZER FEMININO SPANDEX": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "BLAZER FEMININO SPANDEX SEPAT CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "BLAZER FEMININO SPANDEX SEPAT PRETO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "BLAZER FEMININO ORBENK SPANDEX AZUL NOITE": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "BLAZER MASCULINO SPANDEX": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "BLAZER MASCULINO SPANDEX SEPAT PRETO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM ORBENK BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM ORBENK CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO C/REFLETIVO ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM 100% ALG SEPAT BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM 100% ALG (ESTOQUISTA) SEPAT CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM 100% ALG PROFISER BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM PROFISER AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO BRIM 100% ALG SEPAT C/LOGO GRANDE BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO HELANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO HELANCA ORBENK PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO HELANCA SEPAT VERDE MUSGO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO TACTEL SEM FORRO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO TACTEL SEM FORRO ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ELÁSTICO COM CORDÃO TACTEL COM FORRO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CALÇA ZIPER MEIO ELÁSTICO": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA ZIPER MEIO ELÁSTICO ORBENK BRANCO": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA ZIPER MEIO ELÁSTICO ORBENK AZUL": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA TÁTICA RIP STOP": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA TÁTICA ORBENK RIP STOP AZUL": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA TÁTICA ORBENK RIP STOP PRETA": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA POLÍCIA FEDERAL ORBENK RIP STOP PRETA": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA JEANS FEM TRADICIONAL AZUL": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA JEANS FEM TRADICIONAL ORBENK AZUL": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA JEANS MASC TRADICIONAL AZUL": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "64", "ESPECIAL"], "CALÇA JEANS MASC TRADICIONAL ORBENK AZUL": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "72"], "CALÇA SOCIAL FEM LISA": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA SOCIAL FEM LISA SPANDEX SEPAT CINZA": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA SOCIAL FEM LISA SPANDEX SEPAT PRETA": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA SOCIAL FEM LISA SPANDEX GLOBALSEG MARINHO NOITE": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA SOCIAL MASC SPANDEX": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA SOCIAL MASC SPANDEX (NUTRICIONISTA MASC E GARÇON) SEPAT PRETA": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA SOCIAL/SPORT MASC": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CALÇA SOCIAL/SPORT MASC SARJA (MOTORISTA) SEPAT CINZA": ["34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "62", "ESPECIAL"], "CAMISA GOLA POLO FEM MC": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO FEM MC PIQUET PV C/DETALHES CHUMBO (ESTOQUISTA) SEPAT CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO FEM ML": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MASC MC": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MASC MC PIQUET PV C/DETALHES CHUMBO (ESTOQUISTA) SEPAT CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MASC MC PIQUET PV C/DETALHES BORDÔ (ADM/CAIXA) SEPAT BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MC ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MC ORBENK BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MC ORBENK CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MC ORBENK (DETRAN SC) AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MC ORBENK PIQUE 100%ALG AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MC ORBENK PIQUE 100%ALG BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO MASC ML": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO ML ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO ML ORBENK BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO ML ORBENK PIQUE 100%ALG AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA GOLA POLO ML ORBENK PIQUE 100%ALG BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC MC": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC MC (ORBENK ADMINISTRAÇÃO) AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC MC (ORBENK ADMINISTRAÇÃO) BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC MC C/ BOLSO (SEPAT MOTORISTA) CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC MC (SEPAT ADMINISTRAÇÃO) AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC MC RECEPÇÃO GLOBALSEG BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC ML": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC ML S/ BOLSO SEPAT AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC ML S/ BOLSO (SEPAT NUTRICIONISTA, GARÇON) BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA SOCIAL MASC ML S/ BOLSO (SEPAT SUPERVISOR) CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA TÁTICA MC RIP STOP": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA TÁTICA MC RIP STOP ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA TÁTICA MC RIP STOP ORBENK PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA TÁTICA ML RIP STOP": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA TÁTICA ML RIP STOP ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISA TÁTICA ML RIP STOP ORBENK PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BABYLOOK FEM MC MM 100%ALG": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BABYLOOK FEM MC MM 100%ALG SEPAT BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BABYLOOK FEM MC MM 100%ALG (BORD.GRÃO CAFÉ) PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BABYLOOK FEM MC MM PV": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BABYLOOK FEM ML MM 100%ALG": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BABYLOOK FEM ML MM PV": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM100%ALG": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM 100% ALG SEPAT BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM 100% ALG ORBENK BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM 100%ALG EVENTOS SEPAT VERMELHA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM 100%ALG TALENTOS SEPAT PRETA": ["PP", "P", "M", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM 100% ALG TALENTOS SEPAT PRETA": ["G"], "CAMISETA BÁSICA MC MM 100%ALG SEPAT C/LOGO NAS COSTAS BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV ORBENK BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV REFLETIVO ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV ORBENK CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV SEPAT VERDE": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV ''CARREGADOR'' ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV PROFISER BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV \"MEDIANEIRA\" ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA MC MM PV PROFISER AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM 100% ALG": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM 100% ALG SEPAT BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM 100% ALG ORBENK BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM 100%ALG SEPAT C/LOGO BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV ORBENK BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV REFLETIVO ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV ORBENK CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV SEPAT VERDE": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV ''CARREGADOR'' ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV \"MEDIANEIRA\" ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV PROFISER AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETA BÁSICA ML MM PV PROFISER BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETE FEM MC TRICOLINE": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETE FEM MC (ADMINISTRAÇÃO) SEPAT AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETE FEM MC (COPEIRA) SEPAT BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETE FEM MC RECEPÇÃO GLOBALSEG BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETE FEM ML TRICOLINE": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETE FEM ML (NUTRICIONISTA) (PÉ DE GOLA+PUNHO+REVEL EM PRETO) SEPAT BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "CAMISETE FEM ML (SUPERVISORA) (PÉ DE GOLA+PUNHO EM CINZA ESCURO E REVEL EM CHUMBO ESCURO) SEPAT CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "COLETE FEM SPANDEX": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "COLETE FEM SEPAT SPANDEX CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "COLETE FEM SEPAT SPANDEX PRETO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "DOLMA CHEF DE COZINHA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5"], "DOLMA CHEF DE COZINHA MANGA 7/8 (COM FILETES PRETO) BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "GANDOLA ML": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "GANDOLA TÁTICA SAMU ORBENK SEGURANÇA ML AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "GUARDA PÓ S/ MANGA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "GUARDA PÓ MC": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "GUARDA PÓ MC OPERACIONAL ORBENK BRIM BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "GUARDA PÓ ML": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO S/ MANGA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO OPERACIONAL S/ MANGA OXFORDINE SMAB AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO MC": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO OPERACIONAL MC ORBENK BRIM AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO OPERACIONAL MC OXFORDINI SMAB AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO SMAB C/ MANGA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5"], "JALECO SMAB S/ MANGA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5"], "JALECO MC BRIM 100%ALG SEPAT BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO COPEIRA MC ORBENK SPANDEX TWO WAY PRETO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO GOLA PADRE MC ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO OPERACIONAL MC ORBENK BRIM HU UEPG BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO ML": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO OPERACIONAL ML ORBENK BRIM AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO OPERACIONAL ML ORBENK BRIM BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO NUTRICIONISTA ML (3 BOLSOS+DETALHES BORDÔ) SEPAT BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO ML BRIM 100%ALG SEPAT BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO GOLA PADRE ML ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JALECO OPERACIONAL ML ORBENK BRIM HU UEPG BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA RAGLAN": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA OPERACIONAL ORBENK BRIM UNISEX AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA OPERACIONAL ORBENK BRIM UNISEX BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA OPERACIONAL PROFISER BRIM UNISSEX BRANCA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA OPERACIONAL PROFISER BRIM UNISSEX AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA CORTA VENTO SEM CAPUZ FORRADA TACTELL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA SEM CAPUZ COM FORRO TÉRMICO IMPERMEÁVEL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5"], "JAQUETA SEM CAPUZ ORBENK FORRO FAILET TACTELL AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA SEM CAPUZ ORBENK FORRO FAILET TACTELL PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA SEM CAPUZ FORRO TÉRMICO 3 BOLSOS TACTEL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA UNISEX SEM CAPUZ ORBENK NYLON AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA UNISEX SEM CAPUZ ORBENK NYLON PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA COM CAPUZ COM FORRO TÉRMICO IMPERMEÁVEL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5"], "JAQUETA TÁTICA ORBENK NYLON IMPERMEÁVEL AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "G6"], "JAQUETA TÁTICA ORBENK NYLON IMPERMEÁVEL PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA SEM CAPUZ GOLA ALTA SEPAT FORRO METALASSÊ NYLON IMPERMEÁVEL PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA SEM CAPUZ OBRA PRIMA FORRO METALASSÊ NYLON IMPERMEÁVEL PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA SEM CAPUZ CTE CACTOS FORRO TÉRMICO 3 BOLSOS IMPERMEÁVEL PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA COM CAPUZ COM FORRO TÉRMICO 3 BOLSOS EM TACTELL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA COM CAPUZ ORBENK FORRO METALASSÊ NYLON AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "JAQUETA COM CAPUZ ORBENK FORRO METALASSÊ NYLON PRETA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MACACÃO OPERACIONAL MC": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MACACÃO OPERACIONAL ML": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MACACÃO OPERACIONAL ML ORBENK BRIM AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MACACÃO OPERACIONAL ML ORBENK SEGURANÇA RIP STOP AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MOLETOM BLUSÃO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MOLETOM BLUSÃO ORBENK AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MOLETOM BLUSÃO ORBENK BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MOLETOM BLUSÃO ORBENK CINZA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MOLETOM CALÇA": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MOLETOM JAQUETA ZIPER CAPUZ BOLSO LATERAL EMBUTIDO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MOLETOM JAQUETA UNISEX ORBENK COM ZIPER E CAPUZ AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "MOLETOM JAQUETA UNISEX ORBENK COM ZIPER E CAPUZ BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SOBRETUDO FEM. 3/4 LÃ": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SOBRETUDO FEM. 3/4 LÃ ORBENK": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SOBRETUDO MASC 3/4 LÃ": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SOBRETUDO MASC 3/4 LÃ ORBENK": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SUETER LÃ UNISEX": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SUETER LÃ 100% ACRILICA BORDADO ORBENK UNISEX AZUL": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SUETER LÃ 100% ACRILICA BORDADO ORBENK UNISEX BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SUETER LÃ 100% ACRILICA BORDADO ORBENK UNISEX PRETO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SUETER LÃ 100% ACRILICA BORDADO SEPAT UNISEX BRANCO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"], "SUETER LÃ 100% ACRILICA BORDADO SEPAT UNISEX PRETO": ["PP", "P", "M", "G", "GG", "XG", "G1", "G2", "G3", "G4", "G5", "ESPECIAL"]};
+
+// ---------------------------------------------------------------
+// OPERAÇÕES DE COSTURA POR MODELO (fotos das folhas de operação,
+// enviadas por você em 04/09/2026). Nomes de máquina entre
+// parênteses removidos; "Costar e medir" e "inter pernas" corrigidos
+// para "Cortar e medir" e "entre pernas" (erros de digitação nas
+// folhas originais, confirmados por você).
+// ---------------------------------------------------------------
+const OPERACOES_POR_MODELO_DEFAULT = {
+  'Calça Profissional com Bolso Lateral': [
+    'Pregar recorte costas','Prespontar recorte costas','Fechar gancho costas','Prespontar gancho costas',
+    'Limpar gancho frente','Fechar braguilha e limpar','Bainha bolso','Passar bolso','Cortar velcro',
+    'Pregar velcro bolso','Pregar velcro lapela','Fechar lapela','Prespontar lapela','Limpar lapela',
+    'Pregar zíper prespontando a braguilha e fechando gancho frente','Fechar lados','Prespontar lados',
+    'Pregar bolso','Pregar lapela','Fazer passante','Medir e cortar passante','Fechar cós','Pregar cós',
+    'Fazer acabamento do cós','Fechar entre pernas','Fazer bainha perna','Cortar fio e revisar'
+  ],
+  'Calça com Zíper Elástico Costas': [
+    'Fazer bainha bolso frente e costas','Passar bolso','Pregar bolso frente','Pregar bolso costas',
+    'Limpar braguilha frente','Fechar braguilha e limpar','Pregar zíper prespontando braguilha',
+    'Fechar gancho costas','Prespontar gancho costas','Cortar elástico medindo','Pregar elástico costas',
+    'Rebater elástico costas','Fechar lados','Prespontar lados','Fazer passante','Cortar passantes',
+    'Fechar cós','Pregar cós com passante','Fazer acabamento do cós','Fechar entre pernas',
+    'Fazer bainha perna','Cortar fio e revisar'
+  ],
+  'Calça Básica sem Bolso': [
+    'Fechar gancho costas com etiqueta','Prespontar gancho costas','Fechar gancho frente',
+    'Prespontar gancho frente','Fechar lados','Prespontar lados','Fechar entre pernas',
+    'Cortar e medir elásticos','Fechar elásticos','Pregar elásticos','Rebater elásticos',
+    'Fazer bainha perna','Cortar fios'
+  ],
+  'Calça Básica com Bolso': [
+    'Fazer bainha bolso','Passar bolso','Marcar bolso','Pregar bolso','Fechar gancho costas com etiqueta',
+    'Prespontar gancho costas','Fechar gancho frente','Prespontar gancho frente','Fechar lados',
+    'Prespontar lados','Fechar entre pernas','Cortar e medir elásticos','Fechar elásticos',
+    'Pregar elásticos','Rebater elásticos','Fazer bainha perna','Cortar fios'
+  ],
+  'Camisa Tática Manga Curta': [
+    'Colocação velcro na lapela e bolso','Colocação de refletivo nos bolso','Fechar lapelas de bolso',
+    'Virar lapelas de bolso','Pespontar lapelas de bolso','Limpeza de lapelas','Fechar lapelas de ombro',
+    'Virar lapelas de ombro','Pespontar lapelas de ombro','Fechar gola','Virar gola','Pespontar gola',
+    'Fechar pé de gola e pregar','Fazer prega da costa','Pregar pala na costa','Pespontar pala',
+    'Pregar vista de botões','Pespontar vista botões','Virar vista lado sem bordado',
+    'Fazer bainha bolsos, pespontar lapelas, pregar bolsos','Fechar ombro interno','Pespontar ombros',
+    'Pregar lapelas ombros','Pregar mangas','Fechar laterais','Pregar gola e pespontar pé de gola',
+    'Fazer bainha barra','Fazer bainha manga'
+  ]
+};
+
+// ---------------------------------------------------------------
+// CONFIGURAÇÃO DAS ÁREAS
+// Cada área tem até dois campos extras (slotA / slotB), além de
+// Funcionária, Data, Quantidade e Observações que são sempre fixos.
+//   type 'text'         -> campo de texto livre
+//   type 'time-range'   -> dois seletores de horário (De / Até), combinados
+//                           em "HH:MM - HH:MM" ao salvar (Costura)
+//   type 'select'       -> lista editável (extra[extraKey]) + "Outro..."
+//   type 'fixed-select'  -> lista fixa (options), não editável
+//   type 'select-tipos' -> lista editável (tipos[area]) + "Outro..."
+//   type 'select-extra' -> lista editável (extra[extraKey]) + "Outro..."
+//   type 'combo'         -> busca com autocomplete em tipos[area]; comTamanho
+//                           mostra um seletor de tamanho dependente (Talhação);
+//                           comOperacao mostra uma segunda busca de operações
+//                           dependente do modelo escolhido (Costura)
+// ---------------------------------------------------------------
+const AREAS = {
+  Costura: {
+    label: 'Costura',
+    color: '#2B3A55',
+    slotA: { key:'horario', type:'time-range', label:'Horário' },
+    slotB: { key:'modelo', type:'combo', label:'Modelo', comOperacao:true }
+  },
+  CaseadoBotao: {
+    label: 'Caseado e Botão',
+    color: '#C98A2C',
+    slotA: { key:'periodo', type:'fixed-select', label:'Período', options:['Manhã','Tarde'] },
+    slotB: null
+  },
+  RevisaoDobra: {
+    label: 'Revisão e Dobra',
+    color: '#3F7A57',
+    slotA: { key:'tarefa', type:'select', label:'Função / Tarefa', extraKey:'tarefa' },
+    slotB: { key:'tipoPeca', type:'select-tipos', label:'Tipo de peça' }
+  },
+  Talhacao: {
+    label: 'Talhação',
+    color: '#8B5E34',
+    slotA: null,
+    slotB: { key:'peca', type:'combo', label:'Peça', comTamanho:true }
+  }
+};
+const AREA_ORDER = ['Costura','CaseadoBotao','RevisaoDobra','Talhacao'];
+const ICONS_AREA = { Costura:'🧵', CaseadoBotao:'🔘', RevisaoDobra:'📦', Talhacao:'✂️' };
+
+const DEFAULT_TEAM = {
+  Costura: ['Leonora','Marileia','Iglacir','Rosmarlis'],
+  CaseadoBotao: [],
+  RevisaoDobra: ['Alzira','Jairy','Wilmar'],
+  Talhacao: ['Adri']
+};
+const DEFAULT_TIPOS = {
+  Costura: Object.keys(OPERACOES_POR_MODELO_DEFAULT),
+  RevisaoDobra: ['Camiseta','Calça','Bermuda','Polo','Jaleco','Avental'],
+  Talhacao: PECAS_TALHACAO
+};
+const DEFAULT_EXTRA = {
+  tarefa: ['Revisão e Dobragem Manual','Máquina de Dobrar','Lacrar e Colocar Etiqueta']
+};
+
+// ---------------------------------------------------------------
+// ESTADO EM MEMÓRIA (espelha o que está salvo; ver camada de dados abaixo)
+// ---------------------------------------------------------------
+let team = JSON.parse(JSON.stringify(DEFAULT_TEAM));
+let tipos = JSON.parse(JSON.stringify(DEFAULT_TIPOS));
+let extra = JSON.parse(JSON.stringify(DEFAULT_EXTRA));
+let operacoesPorModelo = JSON.parse(JSON.stringify(OPERACOES_POR_MODELO_DEFAULT));
+let entries = [];
+
+let activeAreaLancar = 'Costura';
+let activeAreaConfig = 'Costura';
+let activePeriodo = 'hoje';
+let dashArea = null; // null = tela inicial do dashboard (grid de equipes); senão, chave de área ou 'todas'
+let chart = null;
+let chartHorarios = null;
+let modeloOperacoesConfig = ''; // modelo selecionado no card "Operações por modelo" (Equipe)
+
+// estado do combo de slotB (Peça na Talhação, Modelo na Costura)
+let pecaSelecionada = '';
+// estado dos campos dependentes: Tamanho (grade de quadrados, Talhação) e
+// Operação (busca, igual ao combo principal, Costura)
+let tamanhoSelecionado = '';
+let operacaoSelecionada = '';
+const TAMANHOS_TALHACAO = ['PP','P','M','G','GG','G1','G2','G3','G4','G5',
+  '34','36','38','40','42','44','46','48','50','52','54','56','58','60','62','64','Único'];
+
+// ---------------------------------------------------------------
+// UTIL
+// ---------------------------------------------------------------
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function normalizeSearch(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+}
+function populateSelect(selectEl, list, includeOutro){
+  selectEl.innerHTML = (list||[]).map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('') +
+    (includeOutro ? '<option value="__outro__">Outro...</option>' : '');
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// Data/hora sempre no fuso de Brasília (America/Sao_Paulo), independente
+// do fuso configurado no tablet — assim o "hoje" vira à meia-noite certa
+// mesmo se o relógio do aparelho estiver errado.
+function brasiliaParts(){
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+  const parts = {};
+  fmt.formatToParts(new Date()).forEach(p=>{ parts[p.type] = p.value; });
+  if(parts.hour === '24') parts.hour = '00'; // peculiaridade do Intl em alguns navegadores
+  return parts;
+}
+function todayISO(){
+  const p = brasiliaParts();
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function yesterdayISO(){
+  const p = brasiliaParts();
+  const d = new Date(Date.UTC(parseInt(p.year,10), parseInt(p.month,10)-1, parseInt(p.day,10)));
+  d.setUTCDate(d.getUTCDate()-1);
+  const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), dd = String(d.getUTCDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function toBR(iso){
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+let ultimoDiaConhecido = null;
+function updateClock(){
+  const p = brasiliaParts();
+  const hojeAgora = `${p.year}-${p.month}-${p.day}`;
+  document.getElementById('clockTime').textContent = `${p.hour}:${p.minute}`;
+  document.getElementById('clockDate').textContent = toBR(hojeAgora);
+
+  if(ultimoDiaConhecido === null){
+    ultimoDiaConhecido = hojeAgora;
+  } else if(hojeAgora !== ultimoDiaConhecido){
+    ultimoDiaConhecido = hojeAgora;
+    // o dia virou (horário de Brasília) — atualiza tudo que depende de "hoje"
+    document.getElementById('fData').value = hojeAgora;
+    renderListaHoje();
+    if(document.getElementById('screen-relatorio').classList.contains('active')) renderRelatorio();
+    showToast('O dia virou — painel atualizado automaticamente.');
+  }
+}
+function tamanhoLabel(t){
+  if(!t) return '';
+  return t === 'ESPECIAL' ? 'Especial' : t;
+}
+function formatDetalhe(e){
+  const area = AREAS[e.area];
+  if(!area) return '';
+  const parts = [];
+  if(area.slotA && e[area.slotA.key]) parts.push(e[area.slotA.key]);
+  if(area.slotB && e[area.slotB.key]) parts.push(e[area.slotB.key]);
+  if(e.operacao) parts.push(e.operacao);
+  return parts.join(' · ');
+}
+
+// ---------------------------------------------------------------
+// CAMADA DE DADOS — Firebase (Firestore + Authentication) via REST.
+// Substitui o armazenamento do Claude Artifact: não depende de
+// conta Claude, cada tablet loga com usuário/senha próprios.
+// ---------------------------------------------------------------
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBlBjAvv2ok9xX1dbU24RMgpVeEBPsRqVI",
+  authDomain: "controle-de-producao-61cf1.firebaseapp.com",
+  projectId: "controle-de-producao-61cf1",
+  storageBucket: "controle-de-producao-61cf1.firebasestorage.app",
+  messagingSenderId: "504495822727",
+  appId: "1:504495822727:web:7dffbce9b5888e7532a522"
+};
+const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
+
+const ROLE_EMAIL_MAP = {
+  costura: 'costura@bia-uniformes.app',
+  caseado: 'caseado@bia-uniformes.app',
+  revisao: 'revisao@bia-uniformes.app',
+  talhacao: 'talhacao@bia-uniformes.app',
+  admin: 'admin@bia-uniformes.app'
+};
+const ROLE_AREA_MAP = {
+  costura: 'Costura',
+  caseado: 'CaseadoBotao',
+  revisao: 'RevisaoDobra',
+  talhacao: 'Talhacao'
+};
+
+let fsAuth = { idToken:null, refreshToken:null, expiresAt:0 };
+let currentRole = null; // 'costura' | 'caseado' | 'revisao' | 'talhacao' | 'admin'
+let dbReady = false;
+let downloadsApi = null;
+let unsubscribeLancamentos = null;
+
+function salvarSessao(){
+  try{ localStorage.setItem('painelSessao', JSON.stringify({ refreshToken: fsAuth.refreshToken, role: currentRole })); }
+  catch(e){}
+}
+function carregarSessaoSalva(){
+  try{ const raw = localStorage.getItem('painelSessao'); return raw ? JSON.parse(raw) : null; }
+  catch(e){ return null; }
+}
+function limparSessao(){
+  try{ localStorage.removeItem('painelSessao'); }catch(e){}
+  fsAuth = { idToken:null, refreshToken:null, expiresAt:0 };
+  currentRole = null;
+  dbReady = false;
+}
+
+async function fsRefreshToken(){
+  if(!fsAuth.refreshToken) throw new Error('sem-sessao');
+  const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FIREBASE_CONFIG.apiKey}`, {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`grant_type=refresh_token&refresh_token=${encodeURIComponent(fsAuth.refreshToken)}`
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error((data.error && data.error.message) || 'refresh-falhou');
+  fsAuth.idToken = data.id_token;
+  fsAuth.refreshToken = data.refresh_token;
+  fsAuth.expiresAt = Date.now() + Number(data.expires_in)*1000;
+  salvarSessao();
+  return fsAuth.idToken;
+}
+async function fsEnsureToken(){
+  if(fsAuth.idToken && Date.now() < fsAuth.expiresAt - 60000) return fsAuth.idToken;
+  return await fsRefreshToken();
+}
+async function fsSignIn(email, senha){
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_CONFIG.apiKey}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email, password: senha, returnSecureToken:true })
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error((data.error && data.error.message) || 'login-falhou');
+  fsAuth.idToken = data.idToken;
+  fsAuth.refreshToken = data.refreshToken;
+  fsAuth.expiresAt = Date.now() + Number(data.expiresIn)*1000;
+}
+async function fsFetch(url, opts){
+  const token = await fsEnsureToken();
+  return fetch(url, Object.assign({}, opts, {
+    headers: Object.assign({ 'Authorization': 'Bearer '+token, 'Content-Type':'application/json' }, (opts&&opts.headers)||{})
+  }));
+}
+
+// --- conversão pro formato tipado do Firestore REST ---
+function toFirestoreValue(v){
+  if(v === null || v === undefined) return {nullValue:null};
+  if(typeof v === 'string') return {stringValue:v};
+  if(typeof v === 'number') return Number.isInteger(v) ? {integerValue:String(v)} : {doubleValue:v};
+  if(typeof v === 'boolean') return {booleanValue:v};
+  if(Array.isArray(v)) return {arrayValue:{values: v.map(toFirestoreValue)}};
+  if(typeof v === 'object') return {mapValue:{fields: toFirestoreFields(v)}};
+  return {stringValue:String(v)};
+}
+function toFirestoreFields(obj){
+  const fields = {};
+  Object.keys(obj||{}).forEach(k=>{ fields[k] = toFirestoreValue(obj[k]); });
+  return fields;
+}
+function fromFirestoreValue(v){
+  if(!v) return null;
+  if('nullValue' in v) return null;
+  if('stringValue' in v) return v.stringValue;
+  if('integerValue' in v) return parseInt(v.integerValue,10);
+  if('doubleValue' in v) return v.doubleValue;
+  if('booleanValue' in v) return v.booleanValue;
+  if('arrayValue' in v) return ((v.arrayValue&&v.arrayValue.values)||[]).map(fromFirestoreValue);
+  if('mapValue' in v) return fromFirestoreFields((v.mapValue&&v.mapValue.fields)||{});
+  if('timestampValue' in v) return v.timestampValue;
+  return null;
+}
+function fromFirestoreFields(fields){
+  const obj = {};
+  Object.keys(fields||{}).forEach(k=>{ obj[k] = fromFirestoreValue(fields[k]); });
+  return obj;
+}
+function idFromDocName(name){
+  const parts = String(name||'').split('/');
+  return parts[parts.length-1];
+}
+
+// --- shim com a mesma "forma" do antigo db.doc()/db.collection(),
+//     agora sobre o Firestore REST + consulta pontual (sem sockets) ---
+function fsDoc(path){
+  return {
+    async get(){
+      const res = await fsFetch(`${FIRESTORE_BASE}/${path}`);
+      if(res.status === 404) return { exists:false, data:()=>undefined };
+      if(!res.ok) throw new Error('leitura-falhou');
+      const json = await res.json();
+      return { exists:true, data:()=>fromFirestoreFields(json.fields) };
+    },
+    async set(data){
+      const mask = Object.keys(data).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+      const res = await fsFetch(`${FIRESTORE_BASE}/${path}?${mask}`, { method:'PATCH', body: JSON.stringify({ fields: toFirestoreFields(data) }) });
+      if(!res.ok) throw new Error('escrita-falhou');
+    },
+    async delete(){
+      await fsFetch(`${FIRESTORE_BASE}/${path}`, { method:'DELETE' });
+    },
+    onSnapshot(next, err){
+      let parado = false, timer = null;
+      const poll = async ()=>{
+        if(parado) return;
+        try{ next(await this.get()); }
+        catch(e){ if(err) err(e); }
+        if(!parado) timer = setTimeout(poll, 30000);
+      };
+      poll();
+      return ()=>{ parado = true; clearTimeout(timer); };
+    },
+    collection(sub){ return fsCollection(path + '/' + sub); }
+  };
+}
+
+async function executarQuery(path, query){
+  const structuredQuery = { from: [{ collectionId: path }] };
+  if(query.where.length === 1){
+    const w = query.where[0];
+    structuredQuery.where = { fieldFilter: { field:{fieldPath:w.field}, op:'EQUAL', value: toFirestoreValue(w.value) } };
+  } else if(query.where.length > 1){
+    structuredQuery.where = { compositeFilter: { op:'AND', filters: query.where.map(w=>(
+      { fieldFilter: { field:{fieldPath:w.field}, op:'EQUAL', value: toFirestoreValue(w.value) } }
+    )) } };
+  }
+  if(query.orderByField) structuredQuery.orderBy = [{ field:{fieldPath:query.orderByField}, direction:query.orderByDir }];
+  if(query.limitN) structuredQuery.limit = query.limitN;
+
+  const res = await fsFetch(`${FIRESTORE_BASE}:runQuery`, { method:'POST', body: JSON.stringify({ structuredQuery }) });
+  if(!res.ok){ throw new Error('consulta-falhou: ' + await res.text()); }
+  const arr = await res.json();
+  const docs = (arr||[]).filter(x=>x.document).map(x=>({
+    id: idFromDocName(x.document.name),
+    exists: true,
+    data: ()=>fromFirestoreFields(x.document.fields)
+  }));
+  return { docs };
+}
+
+function fsCollection(path, query){
+  query = query || { where:[], orderByField:null, orderByDir:'ASCENDING', limitN:null };
+  return {
+    where(field, op, value){ return fsCollection(path, Object.assign({}, query, { where: query.where.concat([{field,op,value}]) })); },
+    orderBy(field, dir){ return fsCollection(path, Object.assign({}, query, { orderByField:field, orderByDir: dir==='desc'?'DESCENDING':'ASCENDING' })); },
+    limit(n){ return fsCollection(path, Object.assign({}, query, { limitN:n })); },
+    doc(id){ return fsDoc(path + '/' + (id || uid())); },
+    async add(data){
+      const res = await fsFetch(`${FIRESTORE_BASE}/${path}`, { method:'POST', body: JSON.stringify({ fields: toFirestoreFields(data) }) });
+      if(!res.ok) throw new Error('escrita-falhou');
+      const json = await res.json();
+      return { id: idFromDocName(json.name) };
+    },
+    async get(){ return executarQuery(path, query); },
+    onSnapshot(next, err){
+      let parado = false, timer = null;
+      const poll = async ()=>{
+        if(parado) return;
+        try{ next(await executarQuery(path, query)); }
+        catch(e){ if(err) err(e); }
+        if(!parado) timer = setTimeout(poll, 20000);
+      };
+      poll();
+      return ()=>{ parado = true; clearTimeout(timer); };
+    }
+  };
+}
+
+const db = { doc: fsDoc, collection: fsCollection };
+
+function refreshAfterConfigChange(){
+  refreshFormularioOptions();
+  renderConfigConteudo();
+}
+
+async function persistList(docPath, getLocal, setLocal, mutator){
+  const novo = JSON.parse(JSON.stringify(getLocal()));
+  mutator(novo);
+  if(dbReady){
+    try{
+      await db.doc(docPath).set(novo);
+      setLocal(novo); // atualização otimista; a próxima consulta confirma
+      return true;
+    }catch(e){
+      showToast('Não foi possível salvar. Tente novamente.');
+      return false;
+    }
+  } else {
+    setLocal(novo);
+    refreshAfterConfigChange();
+    return true;
+  }
+}
+
+function subscribeConfig(){
+  db.doc('config/equipe').onSnapshot(snap=>{
+    team = snap.exists ? snap.data() : JSON.parse(JSON.stringify(DEFAULT_TEAM));
+    refreshAfterConfigChange();
+  }, ()=> showToast('Conexão com a equipe perdida.'));
+
+  db.doc('config/tipos').onSnapshot(snap=>{
+    tipos = snap.exists ? snap.data() : JSON.parse(JSON.stringify(DEFAULT_TIPOS));
+    refreshAfterConfigChange();
+  }, ()=> showToast('Conexão com os tipos de peça perdida.'));
+
+  db.doc('config/extra').onSnapshot(snap=>{
+    extra = snap.exists ? snap.data() : JSON.parse(JSON.stringify(DEFAULT_EXTRA));
+    refreshAfterConfigChange();
+  }, ()=> showToast('Conexão com as opções perdida.'));
+
+  db.doc('config/operacoesPorModelo').onSnapshot(snap=>{
+    operacoesPorModelo = snap.exists ? snap.data() : JSON.parse(JSON.stringify(OPERACOES_POR_MODELO_DEFAULT));
+    refreshAfterConfigChange();
+  }, ()=> showToast('Conexão com as operações perdida.'));
+}
+
+// Cada função vê só os lançamentos de hoje da própria área (consulta
+// pequena, atualiza a cada 20s); o admin vê os mais recentes de todas
+// as áreas (usado no Relatório também).
+function subscribeLancamentos(){
+  if(unsubscribeLancamentos) unsubscribeLancamentos();
+  let parado = false, timer = null;
+  const poll = async ()=>{
+    if(parado) return;
+    try{
+      let snap;
+      if(currentRole === 'admin'){
+        snap = await executarQuery('lancamentos', { where:[], orderByField:'criadoEm', orderByDir:'DESCENDING', limitN:300 });
+      } else {
+        snap = await executarQuery('lancamentos', { where:[
+          {field:'area', op:'==', value: ROLE_AREA_MAP[currentRole]},
+          {field:'data', op:'==', value: todayISO()}
+        ], orderByField:null, orderByDir:'ASCENDING', limitN:null });
+      }
+      entries = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      renderListaHoje();
+      if(document.getElementById('screen-relatorio').classList.contains('active')) renderRelatorio();
+    }catch(e){
+      showToast('Conexão com os lançamentos perdida.');
+    }
+    if(!parado) timer = setTimeout(poll, currentRole==='admin' ? 30000 : 20000);
+  };
+  poll();
+  unsubscribeLancamentos = ()=>{ parado = true; clearTimeout(timer); };
+}
+
+// ---------------------------------------------------------------
+// NAV PRINCIPAL
+// ---------------------------------------------------------------
+document.querySelectorAll('.maintabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.maintabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('screen-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab === 'relatorio') renderRelatorio();
+  });
+});
+
+// ---------------------------------------------------------------
+// ÁREA TABS (reutilizado em Lançar e Config)
+// ---------------------------------------------------------------
+function renderAreaTabs(container, activeArea, onSelect){
+  container.innerHTML = '';
+  AREA_ORDER.forEach(key=>{
+    const a = AREAS[key];
+    const btn = document.createElement('button');
+    btn.className = 'area-tab' + (key===activeArea ? ' active' : '');
+    btn.innerHTML = `<span class="dot" style="background:${a.color}"></span>${esc(a.label)}`;
+    btn.addEventListener('click', ()=>onSelect(key));
+    container.appendChild(btn);
+  });
+}
+
+// ---------------------------------------------------------------
+// TELA: LANÇAR
+// ---------------------------------------------------------------
+function renderLancarTabs(){
+  renderAreaTabs(document.getElementById('areaTabsLancar'), activeAreaLancar, (key)=>{
+    activeAreaLancar = key;
+    renderLancarTabs();
+    renderFormulario();
+    renderListaHoje();
+  });
+}
+
+function renderFormulario(){
+  const area = AREAS[activeAreaLancar];
+  document.getElementById('formTitle').textContent = 'Novo lançamento — ' + area.label;
+  document.getElementById('novaFuncionariaInlineWrap').style.display = 'none';
+  resetBotaoRemoverFuncionaria();
+
+  // funcionárias
+  const selF = document.getElementById('fFuncionaria');
+  const lista = team[activeAreaLancar] || [];
+  populateSelect(selF, lista, false);
+  selF.innerHTML += `<option value="__novo__">+ Adicionar nova pessoa...</option>`;
+
+  // data padrão hoje
+  document.getElementById('fData').value = todayISO();
+
+  // slot A
+  const slotA = area.slotA;
+  const fCampoExtraWrap = document.getElementById('fCampoExtraWrap');
+  const rowDataExtra = document.getElementById('rowDataExtra');
+  const inputExtra = document.getElementById('fCampoExtraInput');
+  const selectExtra = document.getElementById('fCampoExtraSelect');
+  const outroExtra = document.getElementById('fCampoExtraOutro');
+  const timeRangeExtra = document.getElementById('fCampoExtraTimeRange');
+  outroExtra.style.display = 'none';
+  outroExtra.value = '';
+  timeRangeExtra.style.display = 'none';
+  if(!slotA){
+    fCampoExtraWrap.style.display = 'none';
+    rowDataExtra.style.gridTemplateColumns = '1fr';
+  } else {
+    fCampoExtraWrap.style.display = '';
+    rowDataExtra.style.gridTemplateColumns = '';
+    document.getElementById('fCampoExtraLabel').textContent = slotA.label;
+    if(slotA.type === 'time-range'){
+      inputExtra.style.display = 'none';
+      selectExtra.style.display = 'none';
+      timeRangeExtra.style.display = '';
+      document.getElementById('fCampoExtraHoraDe').value = '';
+      document.getElementById('fCampoExtraHoraAte').value = '';
+    } else if(slotA.type === 'text'){
+      inputExtra.style.display = '';
+      inputExtra.placeholder = slotA.placeholder || '';
+      inputExtra.value = '';
+      selectExtra.style.display = 'none';
+    } else {
+      inputExtra.style.display = 'none';
+      selectExtra.style.display = '';
+      if(slotA.type === 'fixed-select'){
+        populateSelect(selectExtra, slotA.options, false);
+      } else {
+        const optsA = extra[slotA.extraKey] || [];
+        populateSelect(selectExtra, optsA, true);
+        if(optsA.length === 0) outroExtra.style.display = '';
+      }
+    }
+  }
+
+  // slot B
+  const slotBWrap = document.getElementById('slotBWrap');
+  const slotBSelect = document.getElementById('slotBSelect');
+  const slotBOutro = document.getElementById('slotBOutro');
+  const slotBCombo = document.getElementById('slotBComboWrap');
+  slotBOutro.style.display = 'none';
+  slotBOutro.value = '';
+  if(!area.slotB){
+    slotBWrap.style.display = 'none';
+  } else {
+    slotBWrap.style.display = '';
+    document.getElementById('slotBLabel').textContent = area.slotB.label;
+    if(area.slotB.type === 'combo'){
+      slotBSelect.style.display = 'none';
+      slotBCombo.style.display = '';
+      document.getElementById('fPecaBusca').placeholder = 'Digite para buscar ' + area.slotB.label.toLowerCase() + '...';
+      document.getElementById('fPecaBusca').value = '';
+      document.getElementById('fPecaDropdown').hidden = true;
+      pecaSelecionada = '';
+    } else {
+      slotBSelect.style.display = '';
+      slotBCombo.style.display = 'none';
+      const lista2 = area.slotB.type === 'select-tipos' ? (tipos[activeAreaLancar]||[]) : (extra[area.slotB.extraKey]||[]);
+      populateSelect(slotBSelect, lista2, true);
+      if(lista2.length === 0) slotBOutro.style.display = '';
+    }
+  }
+
+  // tamanho (só Talhação, começa escondido)
+  document.getElementById('fTamanhoWrap').style.display = 'none';
+  tamanhoSelecionado = '';
+  document.getElementById('fTamanhoGrid').innerHTML = '';
+
+  // operação (só Costura, começa escondida até escolher o modelo)
+  document.getElementById('fOperacaoWrap').style.display = 'none';
+  document.getElementById('fOperacaoBusca').value = '';
+  document.getElementById('fOperacaoDropdown').hidden = true;
+  operacaoSelecionada = '';
+
+  document.getElementById('fQuantidade').value = '';
+  document.getElementById('fObs').value = '';
+}
+
+// Atualiza só as opções dos selects (chamado quando outro tablet muda a
+// equipe/tipos/opções) sem apagar o que a funcionária já estava digitando.
+function refreshFormularioOptions(){
+  const area = AREAS[activeAreaLancar];
+
+  const selF = document.getElementById('fFuncionaria');
+  const prevF = selF.value;
+  const lista = team[activeAreaLancar] || [];
+  populateSelect(selF, lista, false);
+  selF.innerHTML += `<option value="__novo__">+ Adicionar nova pessoa...</option>`;
+  if(lista.includes(prevF)) selF.value = prevF;
+
+  if(area.slotA && area.slotA.type === 'select'){
+    const sel = document.getElementById('fCampoExtraSelect');
+    const prev = sel.value;
+    const opts = extra[area.slotA.extraKey] || [];
+    populateSelect(sel, opts, true);
+    if(opts.includes(prev)) sel.value = prev;
+    document.getElementById('fCampoExtraOutro').style.display = (opts.length===0 || sel.value==='__outro__') ? '' : 'none';
+  }
+
+  if(area.slotB && area.slotB.type !== 'combo'){
+    const sel = document.getElementById('slotBSelect');
+    const prev = sel.value;
+    const lista2 = area.slotB.type === 'select-tipos' ? (tipos[activeAreaLancar]||[]) : (extra[area.slotB.extraKey]||[]);
+    populateSelect(sel, lista2, true);
+    if(lista2.includes(prev)) sel.value = prev;
+    document.getElementById('slotBOutro').style.display = (lista2.length===0 || sel.value==='__outro__') ? '' : 'none';
+  }
+  // combo (Peça na Talhação, Modelo na Costura): a busca já lê tipos[area]
+  // ao vivo a cada digitação, não precisa de refresh ativo aqui.
+}
+
+// --- adicionar funcionária (inline, sem prompt() — bloqueado dentro do artifact) ---
+function abrirNovaFuncionariaInline(){
+  resetBotaoRemoverFuncionaria();
+  document.getElementById('novaFuncionariaInlineWrap').style.display = '';
+  const input = document.getElementById('novaFuncionariaInlineInput');
+  input.value = '';
+  input.focus();
+}
+function fecharNovaFuncionariaInline(){
+  document.getElementById('novaFuncionariaInlineWrap').style.display = 'none';
+}
+async function confirmarNovaFuncionaria(){
+  const input = document.getElementById('novaFuncionariaInlineInput');
+  const nome = input.value.trim();
+  if(!nome){ showToast('Digite o nome da funcionária.'); return; }
+  const area = activeAreaLancar;
+  const ok = await persistList('config/equipe', ()=>team, v=>{team=v;}, novo=>{
+    novo[area] = novo[area] || [];
+    novo[area].push(nome);
+  });
+  if(ok){
+    fecharNovaFuncionariaInline();
+    renderFormulario();
+    document.getElementById('fFuncionaria').value = nome;
+    showToast('Funcionária adicionada.');
+  }
+}
+
+document.getElementById('fFuncionaria').addEventListener('change', (e)=>{
+  if(e.target.value === '__novo__') abrirNovaFuncionariaInline();
+});
+document.getElementById('btnNovaFuncionariaInline').addEventListener('click', abrirNovaFuncionariaInline);
+document.getElementById('btnCancelarNovaFuncionaria').addEventListener('click', ()=>{
+  fecharNovaFuncionariaInline();
+  renderFormulario();
+});
+document.getElementById('btnConfirmarNovaFuncionaria').addEventListener('click', confirmarNovaFuncionaria);
+document.getElementById('novaFuncionariaInlineInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ e.preventDefault(); confirmarNovaFuncionaria(); }
+});
+
+// --- remover funcionária (barra de confirmação inline, sem confirm() — bloqueado dentro do artifact) ---
+function resetBotaoRemoverFuncionaria(){
+  document.getElementById('removerFuncionariaConfirmWrap').style.display = 'none';
+}
+document.getElementById('btnRemoverFuncionariaInline').addEventListener('click', ()=>{
+  const nome = document.getElementById('fFuncionaria').value;
+  if(!nome || nome === '__novo__'){ showToast('Selecione uma funcionária para remover.'); return; }
+  document.getElementById('novaFuncionariaInlineWrap').style.display = 'none';
+  document.getElementById('removerFuncionariaNome').textContent = nome;
+  document.getElementById('removerFuncionariaConfirmWrap').style.display = 'flex';
+});
+document.getElementById('btnCancelarRemoverFuncionaria').addEventListener('click', resetBotaoRemoverFuncionaria);
+document.getElementById('btnConfirmarRemoverFuncionaria').addEventListener('click', async ()=>{
+  const nome = document.getElementById('fFuncionaria').value;
+  resetBotaoRemoverFuncionaria();
+  const areaKey = activeAreaLancar;
+  const ok = await persistList('config/equipe', ()=>team, v=>{team=v;}, novo=>{
+    const i = (novo[areaKey]||[]).indexOf(nome);
+    if(i>=0) novo[areaKey].splice(i,1);
+  });
+  if(ok){
+    renderFormulario();
+    showToast('Funcionária removida.');
+  }
+});
+
+document.getElementById('fCampoExtraSelect').addEventListener('change', (e)=>{
+  const outro = document.getElementById('fCampoExtraOutro');
+  outro.style.display = (e.target.value === '__outro__') ? '' : 'none';
+  if(e.target.value === '__outro__') outro.focus();
+});
+
+document.getElementById('slotBSelect').addEventListener('change', (e)=>{
+  const outro = document.getElementById('slotBOutro');
+  outro.style.display = (e.target.value === '__outro__') ? '' : 'none';
+  if(e.target.value === '__outro__') outro.focus();
+});
+
+// --- combo de peças (Talhação) ---
+function renderPecaDropdown(query){
+  const dd = document.getElementById('fPecaDropdown');
+  const lista = tipos[activeAreaLancar] || [];
+  const q = normalizeSearch(query.trim());
+  let matches = q ? lista.filter(n=>normalizeSearch(n).includes(q)) : lista;
+  const total = matches.length;
+  matches = matches.slice(0, 40);
+  let html = matches.map(n=>`<div class="combo-item" data-nome="${esc(n)}">${esc(n)}</div>`).join('');
+  const jaExiste = lista.some(n=>normalizeSearch(n)===q);
+  if(query.trim() && !jaExiste){
+    html += `<div class="combo-item add-new" data-add="${esc(query.trim())}">+ Adicionar "${esc(query.trim())}"</div>`;
+  }
+  if(!matches.length && !query.trim()){
+    html = '<div class="combo-empty">Digite para buscar...</div>';
+  } else if(!matches.length){
+    html = '<div class="combo-empty">Nenhum resultado.</div>' + html;
+  }
+  if(total > 40){
+    html += `<div class="combo-hint">Mostrando 40 de ${total} — refine a busca.</div>`;
+  }
+  dd.innerHTML = html;
+  dd.hidden = false;
+}
+
+function selecionarPeca(nome){
+  const area = AREAS[activeAreaLancar];
+  pecaSelecionada = nome;
+  document.getElementById('fPecaBusca').value = nome;
+  document.getElementById('fPecaDropdown').hidden = true;
+  if(area.slotB.comTamanho) atualizarTamanho(nome);
+  if(area.slotB.comOperacao) atualizarOperacao(nome);
+}
+
+function atualizarTamanho(nome){
+  tamanhoSelecionado = '';
+  document.getElementById('fTamanhoWrap').style.display = '';
+  renderGradeTamanhos();
+}
+
+function renderGradeTamanhos(){
+  document.getElementById('fTamanhoGrid').innerHTML = TAMANHOS_TALHACAO.map(t=>`
+    <button type="button" class="size-btn${t===tamanhoSelecionado?' active':''}" data-tamanho="${esc(t)}">${esc(t)}</button>
+  `).join('');
+}
+
+document.getElementById('fTamanhoGrid').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.size-btn');
+  if(!btn) return;
+  tamanhoSelecionado = (tamanhoSelecionado === btn.dataset.tamanho) ? '' : btn.dataset.tamanho;
+  renderGradeTamanhos();
+});
+
+document.getElementById('fPecaBusca').addEventListener('input', (e)=>{
+  pecaSelecionada = '';
+  document.getElementById('fTamanhoWrap').style.display = 'none';
+  document.getElementById('fOperacaoWrap').style.display = 'none';
+  operacaoSelecionada = '';
+  renderPecaDropdown(e.target.value);
+});
+document.getElementById('fPecaBusca').addEventListener('focus', (e)=>{
+  renderPecaDropdown(e.target.value);
+});
+document.getElementById('fPecaBusca').addEventListener('blur', ()=>{
+  setTimeout(()=>{ document.getElementById('fPecaDropdown').hidden = true; }, 180);
+});
+document.getElementById('fPecaDropdown').addEventListener('mousedown', async (e)=>{
+  // mousedown (não click) pra disparar antes do blur do input
+  const item = e.target.closest('.combo-item');
+  if(!item) return;
+  e.preventDefault();
+  if(item.dataset.add !== undefined){
+    const novoNome = item.dataset.add;
+    const areaKey = activeAreaLancar;
+    await persistList('config/tipos', ()=>tipos, v=>{tipos=v;}, novo=>{
+      novo[areaKey] = novo[areaKey] || [];
+      if(!novo[areaKey].includes(novoNome)) novo[areaKey].push(novoNome);
+    });
+    selecionarPeca(novoNome);
+  } else if(item.dataset.nome !== undefined){
+    selecionarPeca(item.dataset.nome);
+  }
+});
+
+
+// --- combo de operação, dependente do modelo escolhido (Costura) ---
+function atualizarOperacao(modelo){
+  const wrap = document.getElementById('fOperacaoWrap');
+  const busca = document.getElementById('fOperacaoBusca');
+  operacaoSelecionada = '';
+  busca.value = '';
+  document.getElementById('fOperacaoDropdown').hidden = true;
+  const opcoes = operacoesPorModelo[modelo] || [];
+  if(opcoes.length){
+    wrap.style.display = '';
+    busca.placeholder = 'Digite para buscar a operação de "' + modelo + '"...';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function renderOperacaoDropdown(query){
+  const dd = document.getElementById('fOperacaoDropdown');
+  const modelo = pecaSelecionada;
+  const lista = operacoesPorModelo[modelo] || [];
+  const q = normalizeSearch(query.trim());
+  let matches = q ? lista.filter(n=>normalizeSearch(n).includes(q)) : lista;
+  const total = matches.length;
+  matches = matches.slice(0, 40);
+  let html = matches.map(n=>`<div class="combo-item" data-nome="${esc(n)}">${esc(n)}</div>`).join('');
+  const jaExiste = lista.some(n=>normalizeSearch(n)===q);
+  if(query.trim() && !jaExiste){
+    html += `<div class="combo-item add-new" data-add="${esc(query.trim())}">+ Adicionar "${esc(query.trim())}"</div>`;
+  }
+  if(!matches.length && !query.trim()){
+    html = '<div class="combo-empty">Digite para buscar...</div>';
+  } else if(!matches.length){
+    html = '<div class="combo-empty">Nenhum resultado.</div>' + html;
+  }
+  if(total > 40){
+    html += `<div class="combo-hint">Mostrando 40 de ${total} — refine a busca.</div>`;
+  }
+  dd.innerHTML = html;
+  dd.hidden = false;
+}
+
+function selecionarOperacao(nome){
+  operacaoSelecionada = nome;
+  document.getElementById('fOperacaoBusca').value = nome;
+  document.getElementById('fOperacaoDropdown').hidden = true;
+}
+
+document.getElementById('fOperacaoBusca').addEventListener('input', (e)=>{
+  operacaoSelecionada = '';
+  renderOperacaoDropdown(e.target.value);
+});
+document.getElementById('fOperacaoBusca').addEventListener('focus', (e)=>{
+  renderOperacaoDropdown(e.target.value);
+});
+document.getElementById('fOperacaoBusca').addEventListener('blur', ()=>{
+  setTimeout(()=>{ document.getElementById('fOperacaoDropdown').hidden = true; }, 180);
+});
+document.getElementById('fOperacaoDropdown').addEventListener('mousedown', async (e)=>{
+  const item = e.target.closest('.combo-item');
+  if(!item) return;
+  e.preventDefault();
+  const modelo = pecaSelecionada;
+  if(item.dataset.add !== undefined){
+    const novoNome = item.dataset.add;
+    const ok = await persistList('config/operacoesPorModelo', ()=>operacoesPorModelo, v=>{operacoesPorModelo=v;}, novo=>{
+      novo[modelo] = novo[modelo] || [];
+      if(!novo[modelo].includes(novoNome)) novo[modelo].push(novoNome);
+    });
+    if(ok) selecionarOperacao(novoNome);
+  } else if(item.dataset.nome !== undefined){
+    selecionarOperacao(item.dataset.nome);
+  }
+});
+
+document.getElementById('btnSalvar').addEventListener('click', async ()=>{
+  const funcionaria = document.getElementById('fFuncionaria').value;
+  const data = document.getElementById('fData').value;
+  const area = AREAS[activeAreaLancar];
+
+  // slot A
+  let valorA = '';
+  let novoParaExtraA = null;
+  if(area.slotA){
+    if(area.slotA.type === 'time-range'){
+      const de = document.getElementById('fCampoExtraHoraDe').value;
+      const ate = document.getElementById('fCampoExtraHoraAte').value;
+      valorA = de && ate ? `${de} - ${ate}` : (de || '');
+    } else {
+      valorA = area.slotA.type === 'text'
+        ? document.getElementById('fCampoExtraInput').value.trim()
+        : document.getElementById('fCampoExtraSelect').value;
+      if(area.slotA.type === 'select' && valorA === '__outro__'){
+        valorA = document.getElementById('fCampoExtraOutro').value.trim();
+        if(valorA && !(extra[area.slotA.extraKey]||[]).includes(valorA)){
+          novoParaExtraA = valorA;
+        }
+      }
+    }
+  }
+
+  // slot B
+  let valorB = '';
+  let novoParaTipos = null;
+  let novoParaExtra = null;
+  if(area.slotB){
+    if(area.slotB.type === 'combo'){
+      valorB = pecaSelecionada;
+    } else {
+      valorB = document.getElementById('slotBSelect').value;
+      if(valorB === '__outro__'){
+        valorB = document.getElementById('slotBOutro').value.trim();
+        if(valorB){
+          if(area.slotB.type === 'select-tipos' && !(tipos[activeAreaLancar]||[]).includes(valorB)){
+            novoParaTipos = valorB;
+          } else if(area.slotB.type === 'select-extra' && !(extra[area.slotB.extraKey]||[]).includes(valorB)){
+            novoParaExtra = valorB;
+          }
+        }
+      }
+    }
+  }
+
+  // tamanho (só Talhação, quando o campo está visível)
+  let valorTamanho = '';
+  if(area.slotB && area.slotB.comTamanho && document.getElementById('fTamanhoWrap').style.display !== 'none'){
+    valorTamanho = tamanhoSelecionado;
+  }
+
+  // operação (só Costura, quando o modelo escolhido tem operações cadastradas)
+  let valorOperacao = '';
+  if(area.slotB && area.slotB.comOperacao && document.getElementById('fOperacaoWrap').style.display !== 'none'){
+    valorOperacao = operacaoSelecionada;
+  }
+
+  const quantidade = parseFloat(document.getElementById('fQuantidade').value);
+  const obs = document.getElementById('fObs').value.trim();
+
+  if(!funcionaria || funcionaria==='__novo__'){ showToast('Selecione a funcionária.'); return; }
+  if(!data){ showToast('Selecione a data.'); return; }
+  if(area.slotA && (!valorA || valorA==='__outro__')){ showToast('Preencha o campo de '+area.slotA.label.toLowerCase()+'.'); return; }
+  if(area.slotB && (!valorB || valorB==='__outro__')){ showToast('Preencha o campo de '+area.slotB.label.toLowerCase()+'.'); return; }
+  if(area.slotB && area.slotB.comOperacao && document.getElementById('fOperacaoWrap').style.display !== 'none' && !valorOperacao){ showToast('Selecione a operação.'); return; }
+  if(area.slotB && area.slotB.comTamanho && document.getElementById('fTamanhoWrap').style.display !== 'none' && !valorTamanho){ showToast('Selecione o tamanho.'); return; }
+  if(!quantidade || quantidade<=0){ showToast('Informe a quantidade.'); return; }
+
+  if(novoParaExtraA){
+    const key = area.slotA.extraKey;
+    await persistList('config/extra', ()=>extra, v=>{extra=v;}, novo=>{
+      novo[key] = novo[key] || [];
+      if(!novo[key].includes(novoParaExtraA)) novo[key].push(novoParaExtraA);
+    });
+  }
+  if(novoParaTipos){
+    const areaKey = activeAreaLancar;
+    await persistList('config/tipos', ()=>tipos, v=>{tipos=v;}, novo=>{
+      novo[areaKey] = novo[areaKey] || [];
+      if(!novo[areaKey].includes(novoParaTipos)) novo[areaKey].push(novoParaTipos);
+    });
+  }
+  if(novoParaExtra){
+    const key = area.slotB.extraKey;
+    await persistList('config/extra', ()=>extra, v=>{extra=v;}, novo=>{
+      novo[key] = novo[key] || [];
+      if(!novo[key].includes(novoParaExtra)) novo[key].push(novoParaExtra);
+    });
+  }
+
+  const novoLancamento = {
+    area: activeAreaLancar,
+    data, funcionaria, quantidade, obs,
+    criadoEm: Date.now()
+  };
+  if(area.slotA) novoLancamento[area.slotA.key] = valorA;
+  if(area.slotB) novoLancamento[area.slotB.key] = valorB;
+  if(valorTamanho) novoLancamento.tamanho = valorTamanho;
+  if(valorOperacao) novoLancamento.operacao = valorOperacao;
+
+  if(dbReady){
+    try{
+      const res = await db.collection('lancamentos').add(novoLancamento);
+      novoLancamento.id = res.id;
+      entries.unshift(novoLancamento);
+      renderListaHoje();
+      if(document.getElementById('screen-relatorio').classList.contains('active')) renderRelatorio();
+      showToast('Lançamento salvo!');
+    }catch(e){
+      showToast('Não foi possível salvar. Tente novamente.');
+      return;
+    }
+  } else {
+    novoLancamento.id = uid();
+    entries.unshift(novoLancamento);
+    renderListaHoje();
+    showToast('Lançamento salvo (sem conexão — não será compartilhado nem ficará salvo).');
+  }
+
+  renderFormulario();
+  document.getElementById('fFuncionaria').value = funcionaria;
+});
+
+function renderListaHoje(){
+  const area = AREAS[activeAreaLancar];
+  document.getElementById('todayTitle').textContent = 'Lançamentos de hoje — ' + area.label;
+  const hoje = todayISO();
+  const lista = entries
+    .filter(e=>e.area===activeAreaLancar && e.data===hoje)
+    .sort((a,b)=>b.criadoEm-a.criadoEm);
+
+  const container = document.getElementById('todayList');
+  if(lista.length===0){
+    container.innerHTML = '<div class="empty-hint">Nenhum lançamento ainda hoje nesta área.</div>';
+    return;
+  }
+  container.innerHTML = lista.map(e=>{
+    const principal = area.slotB ? (e[area.slotB.key]||'') : '';
+    const linha2 = [];
+    if(area.slotA && e[area.slotA.key]) linha2.push(e[area.slotA.key]);
+    if(e.operacao) linha2.push(e.operacao);
+    if(e.tamanho) linha2.push('Tam. ' + tamanhoLabel(e.tamanho));
+    if(e.obs) linha2.push(e.obs);
+    return `
+    <div class="entry-row">
+      <div class="entry-main">
+        <strong>${esc(e.funcionaria)}${principal ? ' · '+esc(principal) : ''}</strong>
+        <span>${esc(linha2.join(' · '))}</span>
+      </div>
+      <div style="display:flex;align-items:center;">
+        <span class="entry-qty">${e.quantidade}</span>
+        <button class="btn-danger-ghost" onclick="excluirLancamento('${e.id}')">Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.excluirLancamento = async function(id){
+  if(!confirm('Remover este lançamento? Essa ação não pode ser desfeita.')) return;
+  if(dbReady){
+    try{
+      await db.collection('lancamentos').doc(id).delete();
+      entries = entries.filter(e=>e.id!==id);
+      if(document.getElementById('screen-lancar').classList.contains('active')) renderListaHoje();
+      if(document.getElementById('screen-relatorio').classList.contains('active')) renderRelatorio();
+      showToast('Lançamento removido.');
+    }catch(e){
+      showToast('Não foi possível remover. Tente novamente.');
+    }
+  } else {
+    entries = entries.filter(e=>e.id!==id);
+    renderListaHoje();
+    showToast('Lançamento removido.');
+  }
+};
+
+// ---------------------------------------------------------------
+// TELA: RELATÓRIO (dashboard por equipe)
+// ---------------------------------------------------------------
+document.querySelectorAll('#periodoFiltro .pill').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#periodoFiltro .pill').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activePeriodo = btn.dataset.periodo;
+    renderRelatorio();
+  });
+});
+document.getElementById('btnDashBack').addEventListener('click', voltarDashboardHome);
+document.getElementById('btnVerTudo').addEventListener('click', ()=>abrirEquipeDashboard('todas'));
+
+function abrirEquipeDashboard(areaKey){
+  dashArea = areaKey;
+  document.getElementById('dashHome').style.display = 'none';
+  document.getElementById('dashDetalhe').style.display = '';
+  renderRelatorioDetalhe();
+}
+function voltarDashboardHome(){
+  dashArea = null;
+  document.getElementById('dashDetalhe').style.display = 'none';
+  document.getElementById('dashHome').style.display = '';
+  renderDashboardHome();
+}
+
+function filtrarEntradasPeriodo(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  return entries.filter(e=>{
+    if(dashArea && dashArea!=='todas' && e.area!==dashArea) return false;
+    if(activePeriodo==='tudo') return true;
+    const d = new Date(e.data+'T00:00:00');
+    if(activePeriodo==='hoje'){
+      return d.getTime()===hoje.getTime();
+    }
+    if(activePeriodo==='semana'){
+      const seteDiasAtras = new Date(hoje); seteDiasAtras.setDate(hoje.getDate()-6);
+      return d>=seteDiasAtras && d<=hoje;
+    }
+    if(activePeriodo==='mes'){
+      return d.getMonth()===hoje.getMonth() && d.getFullYear()===hoje.getFullYear();
+    }
+    return true;
+  });
+}
+
+function renderPeriodoCaseado(filtradas){
+  const relevantes = filtradas.filter(e=>e.area==='CaseadoBotao');
+  const card = document.getElementById('cardPeriodoCaseado');
+  if(relevantes.length===0){ card.style.display='none'; return; }
+  card.style.display = '';
+  const manha = relevantes.filter(e=>e.periodo==='Manhã').reduce((s,e)=>s+(e.quantidade||0),0);
+  const tarde = relevantes.filter(e=>e.periodo==='Tarde').reduce((s,e)=>s+(e.quantidade||0),0);
+  document.getElementById('statManha').textContent = manha;
+  document.getElementById('statTarde').textContent = tarde;
+}
+
+function extrairHoraInicial(horario){
+  const m = String(horario||'').match(/(\d{1,2})/);
+  if(!m) return null;
+  const h = parseInt(m[1],10);
+  if(isNaN(h) || h<0 || h>23) return null;
+  return h;
+}
+
+function renderHorarios(filtradas){
+  const card = document.getElementById('cardHorarios');
+  if(dashArea !== 'Costura'){ card.style.display='none'; return; }
+  const relevantes = filtradas.filter(e=>e.horario);
+  if(relevantes.length===0){ card.style.display='none'; return; }
+  card.style.display = '';
+  const buckets = {'Manhã':0, 'Tarde':0, 'Noite':0};
+  relevantes.forEach(e=>{
+    const h = extrairHoraInicial(e.horario);
+    if(h==null) return;
+    const b = h<12 ? 'Manhã' : h<18 ? 'Tarde' : 'Noite';
+    buckets[b] += (e.quantidade||0);
+  });
+  const max = Math.max(1, ...Object.values(buckets));
+  document.getElementById('horaBars').innerHTML = Object.entries(buckets).map(([label,val])=>`
+    <div class="hora-bar-row">
+      <span class="hora-bar-label">${label}</span>
+      <div class="hora-bar-track"><div class="hora-bar-fill" style="width:${Math.round(val/max*100)}%"></div></div>
+      <span class="hora-bar-val">${val}</span>
+    </div>
+  `).join('');
+}
+
+function renderChartCosturaHorarios(filtradas){
+  const card = document.getElementById('cardChartHorarios');
+  const relevantes = dashArea==='Costura' ? filtradas.filter(e=>e.horario) : [];
+  if(relevantes.length===0){
+    card.style.display = 'none';
+    if(chartHorarios){ chartHorarios.destroy(); chartHorarios = null; }
+    return;
+  }
+  card.style.display = '';
+
+  const porData = {};
+  relevantes.forEach(e=>{
+    const h = extrairHoraInicial(e.horario);
+    if(h==null) return;
+    const b = h<12 ? 'Manhã' : h<18 ? 'Tarde' : 'Noite';
+    if(!porData[e.data]) porData[e.data] = {'Manhã':0, 'Tarde':0, 'Noite':0};
+    porData[e.data][b] += (e.quantidade||0);
+  });
+  const datas = Object.keys(porData).sort();
+  const labels = datas.map(toBR);
+
+  const ctx = document.getElementById('chartCosturaHorarios').getContext('2d');
+  if(chartHorarios) chartHorarios.destroy();
+  chartHorarios = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: labels.length ? labels : ['Sem dados'],
+      datasets:[
+        {label:'Manhã', data: datas.map(d=>porData[d]['Manhã']), backgroundColor:'#C98A2C'},
+        {label:'Tarde', data: datas.map(d=>porData[d]['Tarde']), backgroundColor:'#2B3A55'},
+        {label:'Noite', data: datas.map(d=>porData[d]['Noite']), backgroundColor:'#3F7A57'}
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:true, position:'bottom', labels:{boxWidth:12, font:{size:11.5}}}},
+      scales:{
+        x:{stacked:true, grid:{display:false}},
+        y:{stacked:true, beginAtZero:true, grid:{color:'#EFEAE0'}}
+      }
+    }
+  });
+}
+
+const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+function calcularTendencia(areaKey, periodo, totalAtual){
+  if(periodo === 'tudo') return null;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  let inicioAnterior, fimAnterior;
+  if(periodo === 'hoje'){
+    inicioAnterior = new Date(hoje); inicioAnterior.setDate(hoje.getDate()-1);
+    fimAnterior = new Date(inicioAnterior);
+  } else if(periodo === 'semana'){
+    const inicioAtual = new Date(hoje); inicioAtual.setDate(hoje.getDate()-6);
+    fimAnterior = new Date(inicioAtual); fimAnterior.setDate(inicioAtual.getDate()-1);
+    inicioAnterior = new Date(fimAnterior); inicioAnterior.setDate(fimAnterior.getDate()-6);
+  } else if(periodo === 'mes'){
+    const inicioAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    fimAnterior = new Date(inicioAtual); fimAnterior.setDate(inicioAtual.getDate()-1);
+    inicioAnterior = new Date(fimAnterior.getFullYear(), fimAnterior.getMonth(), 1);
+  } else {
+    return null;
+  }
+  const totalAnterior = entries.filter(e=>{
+    if(areaKey!=='todas' && e.area!==areaKey) return false;
+    const d = new Date(e.data+'T00:00:00');
+    return d>=inicioAnterior && d<=fimAnterior;
+  }).reduce((s,e)=>s+e.quantidade,0);
+
+  if(totalAnterior===0 && totalAtual===0) return null;
+  const labelPeriodo = periodo==='hoje' ? 'que ontem' : periodo==='semana' ? 'que os 7 dias anteriores' : 'que o mês anterior';
+  if(totalAnterior===0) return {icon:'📈', text:`Produção começou neste período — não havia lançamentos ${labelPeriodo.replace('que','no período')}.`};
+  const variacao = Math.round(((totalAtual-totalAnterior)/totalAnterior)*100);
+  if(variacao > 0) return {icon:'📈', text:`Produção ${variacao}% maior ${labelPeriodo} (${totalAtual} vs ${totalAnterior} peças).`};
+  if(variacao < 0) return {icon:'📉', text:`Produção ${Math.abs(variacao)}% menor ${labelPeriodo} (${totalAtual} vs ${totalAnterior} peças).`};
+  return {icon:'➖', text:`Produção estável em relação ${labelPeriodo} (${totalAtual} peças).`};
+}
+
+function calcularInsights(filtradas, areaKey, periodo){
+  const insights = [];
+  if(filtradas.length === 0){
+    insights.push({icon:'💤', text:'Sem lançamentos suficientes neste período para gerar análises.'});
+    return insights;
+  }
+  const totalAtual = filtradas.reduce((s,e)=>s+e.quantidade,0);
+
+  // melhor dia do período
+  const porDia = {};
+  filtradas.forEach(e=>{ porDia[e.data] = (porDia[e.data]||0) + e.quantidade; });
+  const diasOrdenados = Object.entries(porDia).sort((a,b)=>b[1]-a[1]);
+  if(diasOrdenados.length >= 2){
+    insights.push({icon:'🏆', text:`O melhor dia do período foi ${toBR(diasOrdenados[0][0])}, com ${diasOrdenados[0][1]} peças produzidas.`});
+  }
+
+  // dia da semana mais forte (média)
+  const porSemana = {}, contagemSemana = {};
+  filtradas.forEach(e=>{
+    const dow = new Date(e.data+'T00:00:00').getDay();
+    porSemana[dow] = (porSemana[dow]||0) + e.quantidade;
+    contagemSemana[dow] = (contagemSemana[dow]||0) + 1;
+  });
+  const dowKeys = Object.keys(porSemana);
+  if(dowKeys.length >= 2){
+    const medias = dowKeys.map(dow=>({dow, media: porSemana[dow]/contagemSemana[dow]})).sort((a,b)=>b.media-a.media);
+    insights.push({icon:'📅', text:`${DIAS_SEMANA[medias[0].dow]}-feira costuma ser o dia de maior produção (média de ${Math.round(medias[0].media)} peças).`});
+  }
+
+  // funcionária destaque
+  const porFunc = {};
+  filtradas.forEach(e=>{ porFunc[e.funcionaria] = (porFunc[e.funcionaria]||0) + e.quantidade; });
+  const funcsOrdenados = Object.entries(porFunc).sort((a,b)=>b[1]-a[1]);
+  if(funcsOrdenados.length >= 1 && totalAtual > 0){
+    const [nome, qtd] = funcsOrdenados[0];
+    const share = Math.round((qtd/totalAtual)*100);
+    insights.push({icon:'⭐', text:`${nome} é quem mais produziu no período: ${qtd} peças (${share}% do total).`});
+  }
+
+  // tendência vs período anterior equivalente
+  const tendencia = calcularTendencia(areaKey, periodo, totalAtual);
+  if(tendencia) insights.push(tendencia);
+
+  // Costura: turno mais produtivo + operação mais frequente
+  if(areaKey === 'Costura'){
+    const buckets = {'Manhã':0, 'Tarde':0, 'Noite':0};
+    filtradas.forEach(e=>{
+      const h = extrairHoraInicial(e.horario);
+      if(h==null) return;
+      const b = h<12 ? 'Manhã' : h<18 ? 'Tarde' : 'Noite';
+      buckets[b] += (e.quantidade||0);
+    });
+    const melhorBucket = Object.entries(buckets).sort((a,b)=>b[1]-a[1])[0];
+    if(melhorBucket && melhorBucket[1] > 0){
+      insights.push({icon:'⏱️', text:`O turno da ${melhorBucket[0].toLowerCase()} é o mais produtivo, com ${melhorBucket[1]} peças registradas.`});
+    }
+    const porOp = {};
+    filtradas.forEach(e=>{ if(e.operacao) porOp[e.operacao] = (porOp[e.operacao]||0) + e.quantidade; });
+    const opsOrd = Object.entries(porOp).sort((a,b)=>b[1]-a[1]);
+    if(opsOrd.length){
+      insights.push({icon:'🧵', text:`A operação com mais peças registradas foi "${opsOrd[0][0]}" (${opsOrd[0][1]} peças).`});
+    }
+  }
+
+  return insights.slice(0,6);
+}
+
+function renderInsights(filtradas){
+  const insights = calcularInsights(filtradas, dashArea, activePeriodo);
+  document.getElementById('insightsList').innerHTML = insights.map(i=>`
+    <div class="insight-row"><span class="insight-icon">${i.icon}</span><span>${esc(i.text)}</span></div>
+  `).join('');
+}
+
+function colunasTabela(areaKey){
+  if(areaKey === 'Costura') return ['Data','Funcionária','Horário','Modelo','Operação','Qtd.'];
+  if(areaKey === 'CaseadoBotao') return ['Data','Funcionária','Período','Qtd.'];
+  if(areaKey === 'RevisaoDobra') return ['Data','Funcionária','Tarefa','Tipo de peça','Qtd.'];
+  if(areaKey === 'Talhacao') return ['Data','Funcionária','Peça','Tamanho','Qtd.'];
+  return ['Data','Funcionária','Área','Detalhe','Tamanho','Qtd.'];
+}
+function linhaTabela(e, areaKey){
+  if(areaKey === 'Costura') return [toBR(e.data), esc(e.funcionaria), esc(e.horario||'—'), esc(e.modelo||''), esc(e.operacao||'—'), e.quantidade];
+  if(areaKey === 'CaseadoBotao') return [toBR(e.data), esc(e.funcionaria), esc(e.periodo||''), e.quantidade];
+  if(areaKey === 'RevisaoDobra') return [toBR(e.data), esc(e.funcionaria), esc(e.tarefa||''), esc(e.tipoPeca||''), e.quantidade];
+  if(areaKey === 'Talhacao') return [toBR(e.data), esc(e.funcionaria), esc(e.peca||''), esc(tamanhoLabel(e.tamanho)), e.quantidade];
+  return [toBR(e.data), esc(e.funcionaria), esc(AREAS[e.area] ? AREAS[e.area].label : e.area), esc(formatDetalhe(e)), esc(tamanhoLabel(e.tamanho)), e.quantidade];
+}
+
+function renderTabelaLancamentos(filtradas){
+  const ordenadas = [...filtradas].sort((a,b)=>{
+    if(a.data !== b.data) return b.data.localeCompare(a.data);
+    return (a.funcionaria||'').localeCompare(b.funcionaria||'');
+  });
+  const colunas = colunasTabela(dashArea);
+  const totalColunas = colunas.length + 1;
+  document.getElementById('theadLancamentos').innerHTML = '<tr>'+colunas.map(c=>`<th>${c}</th>`).join('')+'<th></th></tr>';
+  const tbody = document.getElementById('tabelaLancamentos');
+  document.getElementById('tabelaLancamentosVazia').style.display = ordenadas.length===0 ? '' : 'none';
+  const limitadas = ordenadas.slice(0, 500);
+  let html = limitadas.map(e=>{
+    const cels = linhaTabela(e, dashArea).map(v=>`<td>${v}</td>`).join('');
+    return `<tr>${cels}<td><button class="btn-danger-ghost" onclick="excluirLancamento('${e.id}')">Excluir</button></td></tr>`;
+  }).join('');
+  if(ordenadas.length > 500){
+    html += `<tr><td colspan="${totalColunas}" class="empty-hint">Mostrando os 500 lançamentos mais recentes de ${ordenadas.length}.</td></tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+function renderTabelaDetalhe(filtradas){
+  const grupos = {};
+  filtradas.forEach(e=>{
+    const chave = e.funcionaria+'||'+e.area;
+    if(!grupos[chave]) grupos[chave] = {funcionaria:e.funcionaria, area:e.area, pecas:0, lanc:0};
+    grupos[chave].pecas += e.quantidade;
+    grupos[chave].lanc += 1;
+  });
+  const linhas = Object.values(grupos).sort((a,b)=>b.pecas-a.pecas);
+  const showArea = dashArea === 'todas';
+
+  document.getElementById('theadDetalhe').innerHTML = showArea
+    ? '<tr><th>Funcionária</th><th>Área</th><th>Peças</th><th>Lançamentos</th></tr>'
+    : '<tr><th>Funcionária</th><th>Peças</th><th>Lançamentos</th></tr>';
+
+  const tbody = document.getElementById('tabelaDetalhe');
+  document.getElementById('tabelaVazia').style.display = linhas.length===0 ? '' : 'none';
+  tbody.innerHTML = linhas.map(l=>`
+    <tr>
+      <td>${esc(l.funcionaria)}</td>
+      ${showArea ? `<td>${esc(AREAS[l.area].label)}</td>` : ''}
+      <td>${l.pecas}</td>
+      <td>${l.lanc}</td>
+    </tr>
+  `).join('');
+}
+
+function renderRelatorioDetalhe(){
+  const filtradas = filtrarEntradasPeriodo();
+  const areaInfo = dashArea==='todas' ? null : AREAS[dashArea];
+
+  document.getElementById('dashDetalheIcon').textContent = dashArea==='todas' ? '🏭' : ICONS_AREA[dashArea];
+  document.getElementById('dashDetalheTitulo').textContent = dashArea==='todas' ? 'Todas as equipes' : areaInfo.label;
+
+  const totalPecas = filtradas.reduce((s,e)=>s+e.quantidade,0);
+  document.getElementById('statTotalPecas').textContent = totalPecas;
+  document.getElementById('statTotalLanc').textContent = filtradas.length;
+  document.getElementById('statPessoas').textContent = new Set(filtradas.map(e=>e.funcionaria)).size;
+
+  renderPeriodoCaseado(filtradas);
+  renderHorarios(filtradas);
+  renderChartCosturaHorarios(filtradas);
+  renderInsights(filtradas);
+  renderTabelaDetalhe(filtradas);
+  renderTabelaLancamentos(filtradas);
+
+  // gráfico
+  const porFuncionaria = {};
+  filtradas.forEach(e=>{
+    porFuncionaria[e.funcionaria] = (porFuncionaria[e.funcionaria]||0) + e.quantidade;
+  });
+  const labels = Object.keys(porFuncionaria);
+  const valores = Object.values(porFuncionaria);
+
+  const ctx = document.getElementById('chartFuncionaria').getContext('2d');
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: labels.length? labels : ['Sem dados'],
+      datasets:[{
+        data: valores.length? valores : [0],
+        backgroundColor: '#C98A2C',
+        borderRadius:6,
+        maxBarThickness:46
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{beginAtZero:true, grid:{color:'#EFEAE0'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+function renderDashboardHome(){
+  const hojeISO = todayISO();
+  const ontemISO = yesterdayISO();
+  const hojeEntries = entries.filter(e=>e.data===hojeISO);
+  const ontemEntries = entries.filter(e=>e.data===ontemISO);
+  const totalHoje = hojeEntries.reduce((s,e)=>s+e.quantidade,0);
+  const totalOntem = ontemEntries.reduce((s,e)=>s+e.quantidade,0);
+
+  document.getElementById('dashHeroNum').textContent = totalHoje;
+
+  const badgeEl = document.getElementById('dashHeroBadge');
+  if(totalOntem===0 && totalHoje===0){
+    badgeEl.textContent = ''; badgeEl.className = 'dash-hero-badge';
+  } else if(totalOntem===0){
+    badgeEl.textContent = 'Primeiro dia com dados'; badgeEl.className = 'dash-hero-badge up';
+  } else {
+    const variacao = Math.round(((totalHoje-totalOntem)/totalOntem)*100);
+    badgeEl.textContent = (variacao>=0?'▲ ':'▼ ')+Math.abs(variacao)+'% vs ontem';
+    badgeEl.className = 'dash-hero-badge ' + (variacao>=0?'up':'down');
+  }
+
+  const porArea = {};
+  hojeEntries.forEach(e=>{ porArea[e.area] = (porArea[e.area]||0) + e.quantidade; });
+  const areasOrd = Object.entries(porArea).sort((a,b)=>b[1]-a[1]);
+  const insightEl = document.getElementById('dashHeroInsight');
+  if(areasOrd.length===0){
+    insightEl.textContent = 'Nenhum lançamento hoje ainda.';
+  } else {
+    insightEl.textContent = `✨ ${AREAS[areasOrd[0][0]].label} lidera hoje com ${areasOrd[0][1]} peças produzidas.`;
+  }
+
+  const grid = document.getElementById('dashGrid');
+  grid.innerHTML = AREA_ORDER.map(areaKey=>{
+    const area = AREAS[areaKey];
+    const hojeQtd = hojeEntries.filter(e=>e.area===areaKey).reduce((s,e)=>s+e.quantidade,0);
+    const ontemQtd = ontemEntries.filter(e=>e.area===areaKey).reduce((s,e)=>s+e.quantidade,0);
+    const pessoas = new Set(hojeEntries.filter(e=>e.area===areaKey).map(e=>e.funcionaria)).size;
+    let trendHtml = '';
+    if(ontemQtd > 0){
+      const variacao = Math.round(((hojeQtd-ontemQtd)/ontemQtd)*100);
+      trendHtml = `<span class="dash-trend ${variacao>=0?'up':'down'}">${variacao>=0?'▲':'▼'} ${Math.abs(variacao)}%</span>`;
+    } else if(hojeQtd > 0){
+      trendHtml = `<span class="dash-trend up">novo</span>`;
+    }
+    return `
+      <button class="dash-team-card" style="--team-color:${area.color}" data-area="${areaKey}">
+        <div class="dash-team-icon">${ICONS_AREA[areaKey]}</div>
+        <div class="dash-team-name">${esc(area.label)}</div>
+        <div class="dash-team-num">${hojeQtd}<span>peças hoje</span></div>
+        <div class="dash-team-foot"><span>${pessoas} ${pessoas===1?'pessoa':'pessoas'}</span>${trendHtml}</div>
+      </button>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.dash-team-card').forEach(btn=>{
+    btn.addEventListener('click', ()=>abrirEquipeDashboard(btn.dataset.area));
+  });
+}
+
+function renderRelatorio(){
+  if(!dashArea){
+    renderDashboardHome();
+  } else {
+    renderRelatorioDetalhe();
+  }
+}
+
+document.getElementById('btnExportar').addEventListener('click', async ()=>{
+  const filtradas = filtrarEntradasPeriodo();
+  if(filtradas.length===0){ showToast('Nada para exportar neste período.'); return; }
+  const header = ['Área','Data','Funcionária','Detalhe','Tamanho','Quantidade','Observações'];
+  const linhas = filtradas.map(e=>[
+    AREAS[e.area] ? AREAS[e.area].label : e.area, toBR(e.data), e.funcionaria, formatDetalhe(e), tamanhoLabel(e.tamanho), e.quantidade, e.obs||''
+  ]);
+  const csv = [header, ...linhas].map(row=>
+    row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')
+  ).join('\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const filename = `producao_${todayISO()}.csv`;
+
+  try{
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }catch(e){
+    showToast('Não foi possível exportar o CSV.');
+  }
+});
+
+// ---------------------------------------------------------------
+// TELA: CONFIG (EQUIPE)
+// ---------------------------------------------------------------
+function renderConfigTabs(){
+  renderAreaTabs(document.getElementById('areaTabsConfig'), activeAreaConfig, (key)=>{
+    activeAreaConfig = key;
+    document.getElementById('buscaTipos').value = '';
+    document.getElementById('buscaOperacoes').value = '';
+    modeloOperacoesConfig = '';
+    renderConfigTabs();
+    renderConfigConteudo();
+  });
+}
+
+function renderChips(container, lista, onRemove){
+  container.innerHTML = '';
+  if(!lista || lista.length===0){
+    container.innerHTML = '<span class="empty-hint" style="padding:4px 0;">Nenhum item ainda.</span>';
+    return;
+  }
+  lista.forEach((item,idx)=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = item;
+    const btn = document.createElement('button');
+    btn.textContent = '×';
+    btn.addEventListener('click', ()=>onRemove(idx));
+    chip.appendChild(btn);
+    container.appendChild(chip);
+  });
+}
+
+function renderConfigConteudo(){
+  const area = AREAS[activeAreaConfig];
+
+  renderChips(document.getElementById('chipsEquipe'), team[activeAreaConfig], async (idx)=>{
+    const areaKey = activeAreaConfig;
+    await persistList('config/equipe', ()=>team, v=>{team=v;}, novo=>{
+      novo[areaKey].splice(idx,1);
+    });
+  });
+
+  // Tipos de peça (só quando slotB usa tipos[area]: select-tipos ou combo)
+  const cardTipos = document.getElementById('cardTipos');
+  const usaTipos = area.slotB && (area.slotB.type==='select-tipos' || area.slotB.type==='combo');
+  if(usaTipos){
+    cardTipos.style.display = '';
+    document.getElementById('tituloTipos').textContent = area.slotB.type==='combo' ? (area.slotB.label + 's') : 'Tipos de peça';
+    document.getElementById('novoTipo').placeholder = area.slotB.type==='combo' ? ('Adicionar ' + area.slotB.label.toLowerCase()) : 'Ex: Camiseta, Calça...';
+    const listaCompleta = tipos[activeAreaConfig] || [];
+    const busca = document.getElementById('buscaTipos').value || '';
+    const q = normalizeSearch(busca.trim());
+    const filtrada = q ? listaCompleta.filter(n=>normalizeSearch(n).includes(q)) : listaCompleta;
+    renderChips(document.getElementById('chipsTipos'), filtrada, async (idxFiltrado)=>{
+      const nomeRemover = filtrada[idxFiltrado];
+      const areaKey = activeAreaConfig;
+      await persistList('config/tipos', ()=>tipos, v=>{tipos=v;}, novo=>{
+        const i = novo[areaKey].indexOf(nomeRemover);
+        if(i>=0) novo[areaKey].splice(i,1);
+      });
+    });
+  } else {
+    cardTipos.style.display = 'none';
+  }
+
+  // Opções (select editável, seja no slotA ou no slotB)
+  const slotComExtra = (area.slotA && area.slotA.type==='select') ? area.slotA
+                      : (area.slotB && area.slotB.type==='select-extra') ? area.slotB
+                      : null;
+  const cardExtra = document.getElementById('cardOpcoesExtra');
+  if(slotComExtra){
+    cardExtra.style.display = '';
+    document.getElementById('opcoesExtraTitulo').textContent = slotComExtra.label;
+    renderChips(document.getElementById('chipsExtra'), extra[slotComExtra.extraKey], async (idx)=>{
+      const key = slotComExtra.extraKey;
+      await persistList('config/extra', ()=>extra, v=>{extra=v;}, novo=>{
+        novo[key].splice(idx,1);
+      });
+    });
+  } else {
+    cardExtra.style.display = 'none';
+  }
+
+  // Operações por modelo (só quando slotB.comOperacao, ex: Costura)
+  const cardOperacoes = document.getElementById('cardOperacoes');
+  if(area.slotB && area.slotB.comOperacao){
+    cardOperacoes.style.display = '';
+    const modelos = tipos[activeAreaConfig] || [];
+    const selectModelo = document.getElementById('selectModeloOperacoes');
+    if(!modeloOperacoesConfig || !modelos.includes(modeloOperacoesConfig)){
+      modeloOperacoesConfig = modelos[0] || '';
+    }
+    populateSelect(selectModelo, modelos, false);
+    selectModelo.value = modeloOperacoesConfig;
+
+    const listaCompleta = operacoesPorModelo[modeloOperacoesConfig] || [];
+    const buscaOp = document.getElementById('buscaOperacoes').value || '';
+    const qOp = normalizeSearch(buscaOp.trim());
+    const filtradaOp = qOp ? listaCompleta.filter(n=>normalizeSearch(n).includes(qOp)) : listaCompleta;
+    renderChips(document.getElementById('chipsOperacoes'), filtradaOp, async (idxFiltrado)=>{
+      const nomeRemover = filtradaOp[idxFiltrado];
+      const modelo = modeloOperacoesConfig;
+      await persistList('config/operacoesPorModelo', ()=>operacoesPorModelo, v=>{operacoesPorModelo=v;}, novo=>{
+        const i = (novo[modelo]||[]).indexOf(nomeRemover);
+        if(i>=0) novo[modelo].splice(i,1);
+      });
+    });
+  } else {
+    cardOperacoes.style.display = 'none';
+  }
+}
+
+document.getElementById('buscaTipos').addEventListener('input', renderConfigConteudo);
+document.getElementById('buscaOperacoes').addEventListener('input', renderConfigConteudo);
+document.getElementById('selectModeloOperacoes').addEventListener('change', (e)=>{
+  modeloOperacoesConfig = e.target.value;
+  document.getElementById('buscaOperacoes').value = '';
+  renderConfigConteudo();
+});
+document.getElementById('btnAddOperacao').addEventListener('click', async ()=>{
+  const input = document.getElementById('novaOperacao');
+  const val = input.value.trim();
+  if(!val) return;
+  input.value = '';
+  const modelo = modeloOperacoesConfig;
+  const ok = await persistList('config/operacoesPorModelo', ()=>operacoesPorModelo, v=>{operacoesPorModelo=v;}, novo=>{
+    novo[modelo] = novo[modelo] || [];
+    if(!novo[modelo].includes(val)) novo[modelo].push(val);
+  });
+  if(ok) showToast(dbReady ? 'Operação adicionada.' : 'Operação adicionada (só neste tablet — sem conexão).');
+});
+
+document.getElementById('btnAddFuncionaria').addEventListener('click', async ()=>{
+  const input = document.getElementById('novaFuncionaria');
+  const nome = input.value.trim();
+  if(!nome) return;
+  input.value = '';
+  const areaKey = activeAreaConfig;
+  const ok = await persistList('config/equipe', ()=>team, v=>{team=v;}, novo=>{
+    novo[areaKey] = novo[areaKey] || [];
+    novo[areaKey].push(nome);
+  });
+  if(ok) showToast(dbReady ? 'Funcionária adicionada.' : 'Funcionária adicionada (só neste tablet — sem conexão).');
+});
+
+document.getElementById('btnAddTipo').addEventListener('click', async ()=>{
+  const input = document.getElementById('novoTipo');
+  const val = input.value.trim();
+  if(!val) return;
+  input.value = '';
+  const areaKey = activeAreaConfig;
+  const ok = await persistList('config/tipos', ()=>tipos, v=>{tipos=v;}, novo=>{
+    novo[areaKey] = novo[areaKey] || [];
+    if(!novo[areaKey].includes(val)) novo[areaKey].push(val);
+  });
+  if(ok) showToast(dbReady ? 'Item adicionado.' : 'Item adicionado (só neste tablet — sem conexão).');
+});
+
+document.getElementById('btnAddExtra').addEventListener('click', async ()=>{
+  const area = AREAS[activeAreaConfig];
+  const slotComExtra = (area.slotA && area.slotA.type==='select') ? area.slotA
+                      : (area.slotB && area.slotB.type==='select-extra') ? area.slotB
+                      : null;
+  if(!slotComExtra) return;
+  const input = document.getElementById('novoExtra');
+  const val = input.value.trim();
+  if(!val) return;
+  input.value = '';
+  const key = slotComExtra.extraKey;
+  const ok = await persistList('config/extra', ()=>extra, v=>{extra=v;}, novo=>{
+    novo[key] = novo[key] || [];
+    novo[key].push(val);
+  });
+  if(ok) showToast(dbReady ? 'Opção adicionada.' : 'Opção adicionada (só neste tablet — sem conexão).');
+});
+
+// ---------------------------------------------------------------
+// LOGIN / CONTROLE DE ACESSO POR FUNÇÃO
+// ---------------------------------------------------------------
+async function getCapability(name){
+  try{
+    if(!window.claude || typeof window.claude.use !== 'function') return null;
+    return await window.claude.use(name);
+  }catch(e){
+    return null;
+  }
+}
+
+function mostrarTelaLogin(){
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+function esconderTelaLogin(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = '';
+}
+
+// Esconde o que não é da função logada: cada usuário de área só vê
+// a tela de lançar dados da própria área; o admin vê tudo.
+function aplicarRestricoesDoPapel(){
+  const isAdmin = currentRole === 'admin';
+  document.querySelectorAll('.maintabs button').forEach(btn=>{
+    btn.style.display = (isAdmin || btn.dataset.tab === 'lancar') ? '' : 'none';
+  });
+  document.getElementById('areaTabsLancar').style.display = isAdmin ? '' : 'none';
+  document.getElementById('loggedRoleLabel').textContent =
+    isAdmin ? 'Admin' : AREAS[ROLE_AREA_MAP[currentRole]].label;
+  if(!isAdmin){
+    activeAreaLancar = ROLE_AREA_MAP[currentRole];
+  }
+  renderLancarTabs();
+  renderFormulario();
+  renderListaHoje();
+}
+
+async function aoLogar(){
+  dbReady = true;
+  esconderTelaLogin();
+  downloadsApi = await getCapability('downloads');
+  aplicarRestricoesDoPapel();
+  subscribeConfig();
+  subscribeLancamentos();
+}
+
+document.getElementById('btnLogin').addEventListener('click', async ()=>{
+  const usuario = document.getElementById('loginUsuario').value;
+  const senha = document.getElementById('loginSenha').value;
+  const erroEl = document.getElementById('loginErro');
+  erroEl.style.display = 'none';
+  if(!senha){ erroEl.textContent = 'Digite a senha.'; erroEl.style.display = ''; return; }
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await fsSignIn(ROLE_EMAIL_MAP[usuario], senha);
+    currentRole = usuario;
+    salvarSessao();
+    await aoLogar();
+    document.getElementById('loginSenha').value = '';
+  }catch(e){
+    erroEl.textContent = 'Usuário ou senha incorretos.';
+    erroEl.style.display = '';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+});
+document.getElementById('loginSenha').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('btnLogin').click(); }
+});
+document.getElementById('btnSair').addEventListener('click', ()=>{
+  if(unsubscribeLancamentos) unsubscribeLancamentos();
+  limparSessao();
+  location.reload();
+});
+
+// ---------------------------------------------------------------
+// INICIALIZAÇÃO
+// ---------------------------------------------------------------
+async function start(){
+  updateClock();
+  setInterval(updateClock, 15000);
+  renderLancarTabs();
+  renderFormulario();
+  renderListaHoje();
+  renderConfigTabs();
+  renderConfigConteudo();
+
+  const sessao = carregarSessaoSalva();
+  if(sessao && sessao.refreshToken && sessao.role){
+    fsAuth.refreshToken = sessao.refreshToken;
+    currentRole = sessao.role;
+    try{
+      await fsEnsureToken();
+      await aoLogar();
+      return;
+    }catch(e){
+      limparSessao();
+    }
+  }
+  mostrarTelaLogin();
+}
+start();
+</script>
+</body>
+</html>
