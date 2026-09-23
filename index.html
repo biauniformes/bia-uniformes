@@ -4,27 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel de Produção — Bia Uniformes</title>
+<link rel="icon" type="image/jpeg" href="logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root{
-    --bg:#F6F4EE;
+    --bg:#FAFAF8;
     --surface:#FFFFFF;
-    --ink:#23252A;
-    --ink-muted:#6B6F76;
-    --primary:#2B3A55;
-    --primary-dark:#1D2740;
-    --primary-soft:#E7EAF1;
-    --accent:#C98A2C;
-    --accent-dark:#A66F1E;
-    --accent-soft:#F4E6CC;
+    --ink:#1A1A1A;
+    --ink-muted:#6B6B6B;
+    --primary:#171717;
+    --primary-dark:#000000;
+    --primary-soft:#EFEFEF;
+    --accent:#F27F22;
+    --accent-dark:#C9651A;
+    --accent-soft:#FDEAD7;
     --success:#3F7A57;
     --success-soft:#E1EFE6;
     --danger:#B23A48;
     --danger-soft:#F6E3E5;
-    --border:#E3DECF;
+    --border:#E5E1D8;
     --radius:14px;
   }
   *{box-sizing:border-box;}
@@ -48,12 +49,14 @@
     display:flex;align-items:center;justify-content:space-between;
     border-radius:0 0 20px 20px;
   }
+  .topbar .brand{display:flex;align-items:center;gap:11px;}
+  .topbar-logo{width:42px;height:42px;border-radius:10px;object-fit:cover;flex-shrink:0;}
   .topbar .brand h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.2px;}
-  .topbar .brand p{margin:2px 0 0;font-size:12.5px;color:#C9D2E4;}
-  .topbar .clock{text-align:right;font-size:12.5px;color:#C9D2E4;}
+  .topbar .brand p{margin:2px 0 0;font-size:12.5px;color:#D6D2C9;}
+  .topbar .clock{text-align:right;font-size:12.5px;color:#D6D2C9;}
   .topbar .clock strong{display:block;font-size:15px;color:#fff;font-weight:600;}
   .topbar-user{display:flex;align-items:center;gap:8px;margin-top:6px;justify-content:flex-end;}
-  .topbar-user span{font-size:11.5px;color:#C9D2E4;background:rgba(255,255,255,.12);padding:3px 9px;border-radius:999px;font-weight:600;}
+  .topbar-user span{font-size:11.5px;color:#D6D2C9;background:rgba(255,255,255,.12);padding:3px 9px;border-radius:999px;font-weight:600;}
   .topbar-user button{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;}
 
   .login-screen{
@@ -64,8 +67,9 @@
     background:var(--surface);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:360px;
     box-shadow:0 20px 60px rgba(0,0,0,.35);
   }
-  .login-card h1{margin:0 0 2px;font-size:22px;color:var(--primary);}
-  .login-sub{margin:0 0 20px;color:var(--ink-muted);font-size:13px;}
+  .login-logo{display:block;width:84px;height:84px;border-radius:16px;object-fit:cover;margin:0 auto 16px;box-shadow:0 8px 20px rgba(0,0,0,.25);}
+  .login-card h1{margin:0 0 2px;font-size:22px;color:var(--primary);text-align:center;}
+  .login-sub{margin:0 0 20px;color:var(--ink-muted);font-size:13px;text-align:center;}
   .login-erro{color:var(--danger);background:var(--danger-soft);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:600;margin-bottom:14px;}
 
   .connbar{
@@ -216,11 +220,11 @@
   .dash-hero{
     position:relative;overflow:hidden;
     background:
-      radial-gradient(circle at 15% 20%, rgba(201,138,44,.35), transparent 55%),
-      radial-gradient(circle at 85% 0%, rgba(63,122,87,.28), transparent 50%),
-      linear-gradient(135deg,#131A2B,#1D2740 60%,#232F49);
+      radial-gradient(circle at 15% 20%, rgba(242,127,34,.35), transparent 55%),
+      radial-gradient(circle at 85% 0%, rgba(242,127,34,.18), transparent 50%),
+      linear-gradient(135deg,#0D0D0D,#171717 60%,#262626);
     border-radius:20px;padding:22px 20px 20px;margin-bottom:18px;color:#fff;
-    box-shadow:0 18px 40px rgba(19,26,43,.35);
+    box-shadow:0 18px 40px rgba(0,0,0,.4);
   }
   .dash-hero::before{
     content:'';position:absolute;inset:0;opacity:.5;pointer-events:none;
@@ -230,26 +234,26 @@
     background-size:26px 26px;
   }
   .dash-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:relative;}
-  .dash-hero-label{font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;color:#9FADC9;font-weight:700;}
+  .dash-hero-label{font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;color:#C9A583;font-weight:700;}
   .dash-hero-num{font-family:'Space Grotesk',sans-serif;font-size:44px;font-weight:700;line-height:1.15;margin-top:2px;
-    background:linear-gradient(90deg,#fff,#E7C98A);-webkit-background-clip:text;background-clip:text;color:transparent;}
-  .dash-hero-sub{font-size:12.5px;color:#B7C1D9;margin-top:2px;}
+    background:linear-gradient(90deg,#fff,#F5A855);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .dash-hero-sub{font-size:12.5px;color:#C9C4BA;margin-top:2px;}
   .dash-hero-badge{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;white-space:nowrap;}
   .dash-hero-badge.up{background:rgba(63,122,87,.28);color:#8FE0B0;}
   .dash-hero-badge.down{background:rgba(178,58,72,.28);color:#F3A0AC;}
   .dash-hero-insight{position:relative;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);
     font-size:14px;color:#EDE7D9;font-weight:600;}
-  .dash-hero-link{position:relative;display:inline-block;margin-top:12px;font-size:12.5px;color:#E7C98A;font-weight:700;
+  .dash-hero-link{position:relative;display:inline-block;margin-top:12px;font-size:12.5px;color:#F5A855;font-weight:700;
     text-decoration:none;background:none;border:none;padding:0;cursor:pointer;}
 
   .dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px;}
   @media (min-width:640px){.dash-grid{grid-template-columns:repeat(4,1fr);}}
   .dash-team-card{
     position:relative;text-align:left;cursor:pointer;
-    background:linear-gradient(160deg,#1B2338,#222C46);
+    background:linear-gradient(160deg,#161616,#262626);
     border-radius:16px;padding:16px 14px;color:#fff;overflow:hidden;
     border:1px solid rgba(255,255,255,.06);
-    box-shadow:0 10px 24px rgba(15,20,35,.28);
+    box-shadow:0 10px 24px rgba(0,0,0,.35);
     transition:transform .15s;
   }
   .dash-team-card:active{transform:scale(.97);}
@@ -258,10 +262,10 @@
     background:var(--team-color);box-shadow:0 0 14px var(--team-color);
   }
   .dash-team-icon{font-size:22px;margin-bottom:8px;}
-  .dash-team-name{font-size:13px;font-weight:700;color:#C9D2E4;margin-bottom:10px;}
+  .dash-team-name{font-size:13px;font-weight:700;color:#D6D2C9;margin-bottom:10px;}
   .dash-team-num{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;color:#fff;line-height:1;}
-  .dash-team-num span{display:block;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#8D97AF;margin-top:4px;}
-  .dash-team-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:11.5px;color:#8D97AF;font-weight:600;}
+  .dash-team-num span{display:block;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#8A8A8A;margin-top:4px;}
+  .dash-team-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:11.5px;color:#8A8A8A;font-weight:600;}
   .dash-trend{padding:2px 8px;border-radius:999px;font-weight:700;}
   .dash-trend.up{background:rgba(63,122,87,.28);color:#8FE0B0;}
   .dash-trend.down{background:rgba(178,58,72,.28);color:#F3A0AC;}
@@ -273,9 +277,9 @@
     background:var(--primary-soft);flex-shrink:0;}
   .dash-detalhe-titulo{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;color:var(--primary);}
 
-  .insight-card{background:linear-gradient(160deg,#1B2338,#222C46);border:1px solid rgba(255,255,255,.06);}
-  .insight-card h3{color:#E7C98A;}
-  .insight-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13.5px;color:#DCE3F2;}
+  .insight-card{background:linear-gradient(160deg,#161616,#262626);border:1px solid rgba(255,255,255,.06);}
+  .insight-card h3{color:#F5A855;}
+  .insight-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13.5px;color:#E5E1D8;}
   .insight-row:last-child{border-bottom:none;}
   .insight-icon{font-size:15px;flex-shrink:0;}
 
@@ -291,8 +295,9 @@
 
 <div id="loginScreen" class="login-screen">
   <div class="login-card">
+    <img src="logo.jpg" alt="Bia Uniformes Corporativos" class="login-logo">
     <h1>Painel de Produção</h1>
-    <p class="login-sub">Bia Uniformes</p>
+    <p class="login-sub">Bia Uniformes Corporativos</p>
     <div class="field">
       <label>Usuário</label>
       <select id="loginUsuario">
@@ -318,8 +323,11 @@
 
   <div class="topbar">
     <div class="brand">
-      <h1>Painel de Produção</h1>
-      <p>Bia Uniformes</p>
+      <img src="logo.jpg" alt="Bia Uniformes Corporativos" class="topbar-logo">
+      <div>
+        <h1>Painel de Produção</h1>
+        <p>Bia Uniformes Corporativos</p>
+      </div>
     </div>
     <div class="clock">
       <strong id="clockTime">--:--</strong>
@@ -427,9 +435,9 @@
   <!-- ===================== RELATÓRIO ===================== -->
   <div class="screen" id="screen-relatorio">
     <div class="area-tabs" id="relatorioMainTabs">
-      <button class="area-tab active" data-relatoriotab="producao"><span class="dot" style="background:#2B3A55"></span>Produção</button>
+      <button class="area-tab active" data-relatoriotab="producao"><span class="dot" style="background:#171717"></span>Produção</button>
       <button class="area-tab" data-relatoriotab="estoque"><span class="dot" style="background:#8B5E34"></span>Estoque</button>
-      <button class="area-tab" data-relatoriotab="envios"><span class="dot" style="background:#6B4E8E"></span>Envios</button>
+      <button class="area-tab" data-relatoriotab="envios"><span class="dot" style="background:#5C4433"></span>Envios</button>
     </div>
 
     <div id="relatorioProducao">
@@ -709,8 +717,8 @@
   <!-- ===================== ESTOQUE (MATÉRIA-PRIMA) ===================== -->
   <div class="screen" id="screen-estoque">
     <div class="area-tabs" id="estoqueSubTabs">
-      <button class="area-tab active" data-estoquetab="movimentar"><span class="dot" style="background:#2B3A55"></span>Movimentar</button>
-      <button class="area-tab" data-estoquetab="materiais"><span class="dot" style="background:#C98A2C"></span>Materiais</button>
+      <button class="area-tab active" data-estoquetab="movimentar"><span class="dot" style="background:#171717"></span>Movimentar</button>
+      <button class="area-tab" data-estoquetab="materiais"><span class="dot" style="background:#F27F22"></span>Materiais</button>
       <button class="area-tab" data-estoquetab="saldo"><span class="dot" style="background:#3F7A57"></span>Saldo</button>
     </div>
 
@@ -901,7 +909,7 @@
   <!-- ===================== ENVIOS EXTERNOS ===================== -->
   <div class="screen" id="screen-envios">
     <div class="area-tabs" id="enviosSubTabs">
-      <button class="area-tab active" data-enviostab="novo"><span class="dot" style="background:#2B3A55"></span>Novo envio</button>
+      <button class="area-tab active" data-enviostab="novo"><span class="dot" style="background:#171717"></span>Novo envio</button>
       <button class="area-tab" data-enviostab="lista"><span class="dot" style="background:#8B5E34"></span>Envios</button>
     </div>
 
@@ -1093,13 +1101,13 @@ const OPERACOES_POR_MODELO_DEFAULT = {
 const AREAS = {
   Costura: {
     label: 'Costura',
-    color: '#2B3A55',
+    color: '#171717',
     slotA: { key:'horario', type:'time-range', label:'Horário' },
     slotB: { key:'modelo', type:'combo', label:'Modelo', comOperacao:true }
   },
   CaseadoBotao: {
     label: 'Caseado e Botão',
-    color: '#C98A2C',
+    color: '#F27F22',
     slotA: { key:'periodo', type:'fixed-select', label:'Período', options:['Manhã','Tarde'] },
     slotB: null
   },
@@ -2385,8 +2393,8 @@ function renderChartCosturaHorarios(filtradas){
     data:{
       labels: labels.length ? labels : ['Sem dados'],
       datasets:[
-        {label:'Manhã', data: datas.map(d=>porData[d]['Manhã']), backgroundColor:'#C98A2C'},
-        {label:'Tarde', data: datas.map(d=>porData[d]['Tarde']), backgroundColor:'#2B3A55'},
+        {label:'Manhã', data: datas.map(d=>porData[d]['Manhã']), backgroundColor:'#F27F22'},
+        {label:'Tarde', data: datas.map(d=>porData[d]['Tarde']), backgroundColor:'#171717'},
         {label:'Noite', data: datas.map(d=>porData[d]['Noite']), backgroundColor:'#3F7A57'}
       ]
     },
@@ -2618,7 +2626,7 @@ function renderRelatorioDetalhe(){
       labels: labels.length? labels : ['Sem dados'],
       datasets:[{
         data: valores.length? valores : [0],
-        backgroundColor: '#C98A2C',
+        backgroundColor: '#F27F22',
         borderRadius:6,
         maxBarThickness:46
       }]
@@ -3910,8 +3918,8 @@ function renderCardsTipoEstoque(){
   const ativos = materiaisAtivosEstoque();
   const grid = document.getElementById('estoqueCardsTipo');
   const infos = [
-    {tipo:'TECIDO', label:'Tecidos', icon:'🧵', color:'#2B3A55', unidade:'m'},
-    {tipo:'MALHA', label:'Malhas', icon:'🧶', color:'#C98A2C', unidade:'kg'}
+    {tipo:'TECIDO', label:'Tecidos', icon:'🧵', color:'#171717', unidade:'m'},
+    {tipo:'MALHA', label:'Malhas', icon:'🧶', color:'#F27F22', unidade:'kg'}
   ];
   grid.innerHTML = infos.map(info=>{
     const lista = ativos.filter(m=>m.tipo===info.tipo);
@@ -4041,7 +4049,7 @@ function criarOuAtualizarChartEstoque(canvasId, config){
 }
 
 function renderChartsSaldoEstoque(){
-  [['TECIDO','chartSaldoTecidos','m','#2B3A55'], ['MALHA','chartSaldoMalhas','kg','#C98A2C']].forEach(([tipo, canvasId, unidade, cor])=>{
+  [['TECIDO','chartSaldoTecidos','m','#171717'], ['MALHA','chartSaldoMalhas','kg','#F27F22']].forEach(([tipo, canvasId, unidade, cor])=>{
     const lista = materiaisAtivosEstoque().filter(m=>m.tipo===tipo)
       .map(m=>({m, saldo: calcularSaldoMaterial(m.id)}))
       .filter(x=>x.saldo.quantidade>0.001)
@@ -4463,9 +4471,9 @@ function renderHeroEnvios(){
 function renderCardsTipoEnvios(){
   const grid = document.getElementById('enviosCardsTipo');
   const infos = [
-    {tipo:'Costura', icon:'🧵', color:'#2B3A55'},
-    {tipo:'Bordado', icon:'🪡', color:'#C98A2C'},
-    {tipo:'Estamparia', icon:'🎨', color:'#6B4E8E'},
+    {tipo:'Costura', icon:'🧵', color:'#171717'},
+    {tipo:'Bordado', icon:'🪡', color:'#F27F22'},
+    {tipo:'Estamparia', icon:'🎨', color:'#5C4433'},
     {tipo:'Outro', icon:'📦', color:'#6B6F76'}
   ];
   grid.innerHTML = infos.map(info=>{
@@ -4571,7 +4579,7 @@ function renderChartFornecedorEnvios(){
     type:'bar',
     data:{
       labels: lista.length ? lista.map(x=>x[0]) : ['Sem dados'],
-      datasets:[{ data: lista.length ? lista.map(x=>x[1]) : [0], backgroundColor:'#6B4E8E', borderRadius:6 }]
+      datasets:[{ data: lista.length ? lista.map(x=>x[1]) : [0], backgroundColor:'#5C4433', borderRadius:6 }]
     },
     options:{
       indexAxis:'y',
@@ -4591,7 +4599,7 @@ function renderChartEnviosTempo(filtradas){
     type:'bar',
     data:{
       labels: labels.length ? labels : ['Sem dados'],
-      datasets:[{label:'Peças enviadas', data: datas.map(d=>porData[d]), backgroundColor:'#2B3A55'}]
+      datasets:[{label:'Peças enviadas', data: datas.map(d=>porData[d]), backgroundColor:'#171717'}]
     },
     options:{
       responsive:true, maintainAspectRatio:false,
