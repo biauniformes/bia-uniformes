@@ -192,6 +192,12 @@
   td{padding:9px 6px;border-bottom:1px solid var(--border);}
   tr:last-child td{border-bottom:none;}
   .table-scroll{overflow-x:auto;}
+  .tabela-detalhe-cabecalho{cursor:pointer;}
+  .tabela-detalhe-cabecalho:active{background:var(--primary-soft);}
+  .expandir-seta{color:var(--accent);font-weight:700;width:16px;}
+  .subtabela-detalhe-cabecalho td{font-size:11px;color:var(--ink-muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px;background:var(--bg);border-top:1px solid var(--border);}
+  .subtabela-detalhe td{background:var(--bg);font-size:13px;color:var(--ink-muted);}
+  .subtabela-detalhe td:nth-child(2){color:var(--ink);}
 
   .toast{
     position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
@@ -2524,32 +2530,60 @@ function renderTabelaLancamentos(filtradas){
   tbody.innerHTML = html;
 }
 
+let funcionariasExpandidas = new Set();
+
 function renderTabelaDetalhe(filtradas){
   const grupos = {};
   filtradas.forEach(e=>{
     const chave = e.funcionaria+'||'+e.area;
-    if(!grupos[chave]) grupos[chave] = {funcionaria:e.funcionaria, area:e.area, pecas:0, lanc:0};
+    if(!grupos[chave]) grupos[chave] = {funcionaria:e.funcionaria, area:e.area, pecas:0, lanc:0, entradas:[]};
     grupos[chave].pecas += e.quantidade;
     grupos[chave].lanc += 1;
+    grupos[chave].entradas.push(e);
   });
   const linhas = Object.values(grupos).sort((a,b)=>b.pecas-a.pecas);
   const showArea = dashArea === 'todas';
 
   document.getElementById('theadDetalhe').innerHTML = showArea
-    ? '<tr><th>Funcionária</th><th>Área</th><th>Peças</th><th>Lançamentos</th></tr>'
-    : '<tr><th>Funcionária</th><th>Peças</th><th>Lançamentos</th></tr>';
+    ? '<tr><th></th><th>Funcionária</th><th>Área</th><th>Peças</th><th>Lançamentos</th></tr>'
+    : '<tr><th></th><th>Funcionária</th><th>Peças</th><th>Lançamentos</th></tr>';
 
   const tbody = document.getElementById('tabelaDetalhe');
   document.getElementById('tabelaVazia').style.display = linhas.length===0 ? '' : 'none';
-  tbody.innerHTML = linhas.map(l=>`
-    <tr>
+  const totalColunas = (showArea ? 4 : 3) + 1;
+  tbody.innerHTML = linhas.map(l=>{
+    const chave = l.funcionaria+'||'+l.area;
+    const aberta = funcionariasExpandidas.has(chave);
+    const colunasArea = colunasTabela(l.area);
+    const ordenadas = [...l.entradas].sort((a,b)=> b.data.localeCompare(a.data));
+    const linhasDetalhe = aberta ? ordenadas.map(e=>`
+      <tr class="subtabela-detalhe">
+        <td></td>
+        ${linhaTabela(e, l.area).map(v=>`<td>${v}</td>`).join('')}
+        ${showArea ? '<td></td>' : ''}
+      </tr>
+    `).join('') : '';
+    return `
+    <tr class="tabela-detalhe-cabecalho" data-expandir-funcionaria="${esc(chave)}">
+      <td class="expandir-seta">${aberta ? '▾' : '▸'}</td>
       <td>${esc(l.funcionaria)}</td>
       ${showArea ? `<td>${esc(AREAS[l.area].label)}</td>` : ''}
       <td>${l.pecas}</td>
       <td>${l.lanc}</td>
     </tr>
-  `).join('');
+    ${aberta ? `<tr class="subtabela-detalhe-cabecalho"><td></td>${colunasArea.map(c=>`<td>${c}</td>`).join('')}${showArea?'<td></td>':''}</tr>${linhasDetalhe}` : ''}
+  `;
+  }).join('');
 }
+
+document.getElementById('tabelaDetalhe').addEventListener('click', (e)=>{
+  const tr = e.target.closest('[data-expandir-funcionaria]');
+  if(!tr) return;
+  const chave = tr.dataset.expandirFuncionaria;
+  if(funcionariasExpandidas.has(chave)) funcionariasExpandidas.delete(chave);
+  else funcionariasExpandidas.add(chave);
+  renderTabelaDetalhe(filtrarEntradasPeriodo());
+});
 
 function renderRelatorioDetalhe(){
   const filtradas = filtrarEntradasPeriodo();
