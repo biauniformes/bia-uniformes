@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --bg:#FAFAF8;
@@ -1279,15 +1280,9 @@ function formatDetalhe(e){
 // Substitui o armazenamento do Claude Artifact: não depende de
 // conta Claude, cada tablet loga com usuário/senha próprios.
 // ---------------------------------------------------------------
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBlBjAvv2ok9xX1dbU24RMgpVeEBPsRqVI",
-  authDomain: "controle-de-producao-61cf1.firebaseapp.com",
-  projectId: "controle-de-producao-61cf1",
-  storageBucket: "controle-de-producao-61cf1.firebasestorage.app",
-  messagingSenderId: "504495822727",
-  appId: "1:504495822727:web:7dffbce9b5888e7532a522"
-};
-const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
+const SUPABASE_URL = 'https://rilsmkgcjhdwpulhqobe.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_LIbEQFiphnIYneAJcpiQNw_tjf20-Yj';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ROLE_EMAIL_MAP = {
   costura: 'costura@bia-uniformes.app',
@@ -1305,183 +1300,145 @@ const ROLE_AREA_MAP = {
   talhacao: 'Talhacao'
 };
 
-let fsAuth = { idToken:null, refreshToken:null, expiresAt:0 };
 let currentRole = null; // 'costura' | 'caseado' | 'revisao' | 'talhacao' | 'admin'
 let dbReady = false;
 let downloadsApi = null;
 let unsubscribeLancamentos = null;
 
-function salvarSessao(){
-  try{ localStorage.setItem('painelSessao', JSON.stringify({ refreshToken: fsAuth.refreshToken, role: currentRole })); }
-  catch(e){}
-}
-function carregarSessaoSalva(){
-  try{ const raw = localStorage.getItem('painelSessao'); return raw ? JSON.parse(raw) : null; }
-  catch(e){ return null; }
-}
-function limparSessao(){
-  try{ localStorage.removeItem('painelSessao'); }catch(e){}
-  fsAuth = { idToken:null, refreshToken:null, expiresAt:0 };
-  currentRole = null;
-  dbReady = false;
-}
-
-async function fsRefreshToken(){
-  if(!fsAuth.refreshToken) throw new Error('sem-sessao');
-  const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FIREBASE_CONFIG.apiKey}`, {
-    method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:`grant_type=refresh_token&refresh_token=${encodeURIComponent(fsAuth.refreshToken)}`
-  });
-  const data = await res.json();
-  if(!res.ok) throw new Error((data.error && data.error.message) || 'refresh-falhou');
-  fsAuth.idToken = data.id_token;
-  fsAuth.refreshToken = data.refresh_token;
-  fsAuth.expiresAt = Date.now() + Number(data.expires_in)*1000;
-  salvarSessao();
-  return fsAuth.idToken;
-}
-async function fsEnsureToken(){
-  if(fsAuth.idToken && Date.now() < fsAuth.expiresAt - 60000) return fsAuth.idToken;
-  return await fsRefreshToken();
-}
 async function fsSignIn(email, senha){
-  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_CONFIG.apiKey}`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ email, password: senha, returnSecureToken:true })
-  });
-  const data = await res.json();
-  if(!res.ok) throw new Error((data.error && data.error.message) || 'login-falhou');
-  fsAuth.idToken = data.idToken;
-  fsAuth.refreshToken = data.refreshToken;
-  fsAuth.expiresAt = Date.now() + Number(data.expiresIn)*1000;
-}
-async function fsFetch(url, opts){
-  const token = await fsEnsureToken();
-  return fetch(url, Object.assign({}, opts, {
-    headers: Object.assign({ 'Authorization': 'Bearer '+token, 'Content-Type':'application/json' }, (opts&&opts.headers)||{})
-  }));
+  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+  if(error) throw new Error(error.message);
 }
 
-// --- conversão pro formato tipado do Firestore REST ---
-function toFirestoreValue(v){
-  if(v === null || v === undefined) return {nullValue:null};
-  if(typeof v === 'string') return {stringValue:v};
-  if(typeof v === 'number') return Number.isInteger(v) ? {integerValue:String(v)} : {doubleValue:v};
-  if(typeof v === 'boolean') return {booleanValue:v};
-  if(Array.isArray(v)) return {arrayValue:{values: v.map(toFirestoreValue)}};
-  if(typeof v === 'object') return {mapValue:{fields: toFirestoreFields(v)}};
-  return {stringValue:String(v)};
+// --- conversão entre os nomes em camelCase usados no app (ex: criadoEm)
+//     e os nomes em snake_case das colunas no Postgres (ex: criado_em) ---
+function paraSnakeCase(s){ return s.replace(/[A-Z]/g, m => '_'+m.toLowerCase()); }
+function paraCamelCase(s){ return s.replace(/_([a-z0-9])/g, (_,c) => c.toUpperCase()); }
+function objParaSnake(obj){
+  const out = {};
+  Object.keys(obj||{}).forEach(k=>{ out[paraSnakeCase(k)] = obj[k]; });
+  return out;
 }
-function toFirestoreFields(obj){
-  const fields = {};
-  Object.keys(obj||{}).forEach(k=>{ fields[k] = toFirestoreValue(obj[k]); });
-  return fields;
-}
-function fromFirestoreValue(v){
-  if(!v) return null;
-  if('nullValue' in v) return null;
-  if('stringValue' in v) return v.stringValue;
-  if('integerValue' in v) return parseInt(v.integerValue,10);
-  if('doubleValue' in v) return v.doubleValue;
-  if('booleanValue' in v) return v.booleanValue;
-  if('arrayValue' in v) return ((v.arrayValue&&v.arrayValue.values)||[]).map(fromFirestoreValue);
-  if('mapValue' in v) return fromFirestoreFields((v.mapValue&&v.mapValue.fields)||{});
-  if('timestampValue' in v) return v.timestampValue;
-  return null;
-}
-function fromFirestoreFields(fields){
-  const obj = {};
-  Object.keys(fields||{}).forEach(k=>{ obj[k] = fromFirestoreValue(fields[k]); });
-  return obj;
-}
-function idFromDocName(name){
-  const parts = String(name||'').split('/');
-  return parts[parts.length-1];
+function objParaCamel(obj){
+  const out = {};
+  Object.keys(obj||{}).forEach(k=>{ out[paraCamelCase(k)] = obj[k]; });
+  return out;
 }
 
-// --- shim com a mesma "forma" do antigo db.doc()/db.collection(),
-//     agora sobre o Firestore REST + consulta pontual (sem sockets) ---
+// nome de "coleção" (como o resto do app chama) -> tabela real no Postgres
+const TABELA_POR_COLECAO = {
+  lancamentos: 'lancamentos',
+  materiais: 'materiais',
+  movimentacoesEstoque: 'movimentacoes_estoque',
+  enviosExternos: 'envios_externos'
+};
+
+// um "caminho" tipo Firestore ('config/equipe', 'materiais/abc123') vira
+// ou uma linha de uma tabela normal (id=abc123), ou uma chave dentro da
+// tabela genérica "config" (usada pelos documentos de configuração)
+function parseDocPath(path){
+  const partes = path.split('/');
+  const first = partes[0], second = partes[1];
+  if(first === 'config' || first === 'enviosConfig'){
+    const key = first === 'enviosConfig' ? 'envios_' + second : second;
+    return { kind:'config', key };
+  }
+  return { kind:'row', table: TABELA_POR_COLECAO[first] || first, id: second };
+}
+
+// --- shim com a mesma "forma" do antigo db.doc()/db.collection(), agora
+//     sobre o Supabase (Postgres + tempo real de verdade via websocket,
+//     em vez de perguntar pro banco a cada 60s) ---
 function fsDoc(path){
+  const info = parseDocPath(path);
   return {
     async get(){
-      const res = await fsFetch(`${FIRESTORE_BASE}/${path}`);
-      if(res.status === 404) return { exists:false, data:()=>undefined };
-      if(!res.ok) throw new Error('leitura-falhou');
-      const json = await res.json();
-      return { exists:true, data:()=>fromFirestoreFields(json.fields) };
+      if(info.kind === 'config'){
+        const { data, error } = await sb.from('config').select('data').eq('key', info.key).maybeSingle();
+        if(error) throw error;
+        return { exists: !!data, data: ()=> data ? data.data : undefined };
+      }
+      const { data, error } = await sb.from(info.table).select('*').eq('id', info.id).maybeSingle();
+      if(error) throw error;
+      return { exists: !!data, data: ()=> data ? objParaCamel(data) : undefined };
     },
-    async set(data){
-      const mask = Object.keys(data).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
-      const res = await fsFetch(`${FIRESTORE_BASE}/${path}?${mask}`, { method:'PATCH', body: JSON.stringify({ fields: toFirestoreFields(data) }) });
-      if(!res.ok) throw new Error('escrita-falhou');
+    async set(payload){
+      if(info.kind === 'config'){
+        const { error } = await sb.from('config').upsert({ key: info.key, data: payload, updated_at: new Date().toISOString() });
+        if(error) throw error;
+        return;
+      }
+      const { error } = await sb.from(info.table).update(objParaSnake(payload)).eq('id', info.id);
+      if(error) throw error;
     },
     async delete(){
-      await fsFetch(`${FIRESTORE_BASE}/${path}`, { method:'DELETE' });
+      if(info.kind === 'config'){
+        const { error } = await sb.from('config').delete().eq('key', info.key);
+        if(error) throw error;
+        return;
+      }
+      const { error } = await sb.from(info.table).delete().eq('id', info.id);
+      if(error) throw error;
     },
     onSnapshot(next, err){
-      let parado = false, timer = null;
-      const poll = async ()=>{
-        if(parado) return;
-        try{ next(await this.get()); }
-        catch(e){ if(err) err(e); }
-        if(!parado) timer = setTimeout(poll, 60000);
+      let ativo = true;
+      const carregar = async ()=>{
+        try{ if(ativo) next(await this.get()); }
+        catch(e){ if(ativo && err) err(e); }
       };
-      poll();
-      return ()=>{ parado = true; clearTimeout(timer); };
+      carregar();
+      const filtro = info.kind==='config'
+        ? { event:'*', schema:'public', table:'config', filter:`key=eq.${info.key}` }
+        : { event:'*', schema:'public', table:info.table, filter:`id=eq.${info.id}` };
+      const canal = sb.channel('doc:'+path).on('postgres_changes', filtro, carregar).subscribe();
+      return ()=>{ ativo = false; sb.removeChannel(canal); };
     },
     collection(sub){ return fsCollection(path + '/' + sub); }
   };
 }
 
-async function executarQuery(path, query){
-  const structuredQuery = { from: [{ collectionId: path }] };
-  if(query.where.length === 1){
-    const w = query.where[0];
-    structuredQuery.where = { fieldFilter: { field:{fieldPath:w.field}, op:'EQUAL', value: toFirestoreValue(w.value) } };
-  } else if(query.where.length > 1){
-    structuredQuery.where = { compositeFilter: { op:'AND', filters: query.where.map(w=>(
-      { fieldFilter: { field:{fieldPath:w.field}, op:'EQUAL', value: toFirestoreValue(w.value) } }
-    )) } };
+async function executarQuery(colecao, query){
+  const table = TABELA_POR_COLECAO[colecao] || colecao;
+  let q = sb.from(table).select('*');
+  (query.where||[]).forEach(w=>{ q = q.eq(paraSnakeCase(w.field), w.value); });
+  if(query.orderByField){
+    q = q.order(paraSnakeCase(query.orderByField), { ascending: !(query.orderByDir==='DESCENDING' || query.orderByDir==='desc') });
   }
-  if(query.orderByField) structuredQuery.orderBy = [{ field:{fieldPath:query.orderByField}, direction:query.orderByDir }];
-  if(query.limitN) structuredQuery.limit = query.limitN;
-
-  const res = await fsFetch(`${FIRESTORE_BASE}:runQuery`, { method:'POST', body: JSON.stringify({ structuredQuery }) });
-  if(!res.ok){ throw new Error('consulta-falhou: ' + await res.text()); }
-  const arr = await res.json();
-  const docs = (arr||[]).filter(x=>x.document).map(x=>({
-    id: idFromDocName(x.document.name),
-    exists: true,
-    data: ()=>fromFirestoreFields(x.document.fields)
-  }));
+  if(query.limitN) q = q.limit(query.limitN);
+  const { data, error } = await q;
+  if(error) throw new Error('consulta-falhou: ' + error.message);
+  const docs = (data||[]).map(row=>{
+    const camel = objParaCamel(row);
+    return { id: row.id, exists:true, data: ()=>camel };
+  });
   return { docs };
 }
 
 function fsCollection(path, query){
   query = query || { where:[], orderByField:null, orderByDir:'ASCENDING', limitN:null };
+  const table = TABELA_POR_COLECAO[path] || path;
   return {
     where(field, op, value){ return fsCollection(path, Object.assign({}, query, { where: query.where.concat([{field,op,value}]) })); },
     orderBy(field, dir){ return fsCollection(path, Object.assign({}, query, { orderByField:field, orderByDir: dir==='desc'?'DESCENDING':'ASCENDING' })); },
     limit(n){ return fsCollection(path, Object.assign({}, query, { limitN:n })); },
-    doc(id){ return fsDoc(path + '/' + (id || uid())); },
-    async add(data){
-      const res = await fsFetch(`${FIRESTORE_BASE}/${path}`, { method:'POST', body: JSON.stringify({ fields: toFirestoreFields(data) }) });
-      if(!res.ok) throw new Error('escrita-falhou');
-      const json = await res.json();
-      return { id: idFromDocName(json.name) };
+    doc(id){ return fsDoc(path + '/' + (id || crypto.randomUUID())); },
+    async add(payload){
+      const { data, error } = await sb.from(table).insert(objParaSnake(payload)).select('id').single();
+      if(error) throw new Error('escrita-falhou: ' + error.message);
+      return { id: data.id };
     },
     async get(){ return executarQuery(path, query); },
     onSnapshot(next, err){
-      let parado = false, timer = null;
-      const poll = async ()=>{
-        if(parado) return;
-        try{ next(await executarQuery(path, query)); }
-        catch(e){ if(err) err(e); }
-        if(!parado) timer = setTimeout(poll, 60000);
+      let ativo = true;
+      const carregar = async ()=>{
+        try{ if(ativo) next(await executarQuery(path, query)); }
+        catch(e){ if(ativo && err) err(e); }
       };
-      poll();
-      return ()=>{ parado = true; clearTimeout(timer); };
+      carregar();
+      const canal = sb.channel('col:'+path+':'+JSON.stringify(query))
+        .on('postgres_changes', { event:'*', schema:'public', table }, carregar)
+        .subscribe();
+      return ()=>{ ativo = false; sb.removeChannel(canal); };
     }
   };
 }
@@ -1562,30 +1519,20 @@ function subscribeLancamentos(){
     renderListaHoje();
     if(document.getElementById('screen-relatorio').classList.contains('active')) renderRelatorio();
   }
-  let parado = false, timer = null;
-  const poll = async ()=>{
-    if(parado) return;
-    try{
-      let snap;
-      if(currentRole === 'admin'){
-        snap = await executarQuery('lancamentos', { where:[], orderByField:'criadoEm', orderByDir:'DESCENDING', limitN:300 });
-      } else {
-        snap = await executarQuery('lancamentos', { where:[
-          {field:'area', op:'==', value: ROLE_AREA_MAP[currentRole]},
-          {field:'data', op:'==', value: todayISO()}
-        ], orderByField:null, orderByDir:'ASCENDING', limitN:null });
-      }
-      entries = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-      salvarCache(chaveCache, entries);
-      renderListaHoje();
-      if(document.getElementById('screen-relatorio').classList.contains('active')) renderRelatorio();
-    }catch(e){
-      showToast('Conexão com os lançamentos perdida.');
-    }
-    if(!parado) timer = setTimeout(poll, 60000);
-  };
-  poll();
-  unsubscribeLancamentos = ()=>{ parado = true; clearTimeout(timer); };
+
+  let query = db.collection('lancamentos');
+  if(currentRole === 'admin'){
+    query = query.orderBy('criadoEm', 'desc').limit(300);
+  } else {
+    query = query.where('area', '==', ROLE_AREA_MAP[currentRole]).where('data', '==', todayISO());
+  }
+
+  unsubscribeLancamentos = query.onSnapshot(snap=>{
+    entries = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    salvarCache(chaveCache, entries);
+    renderListaHoje();
+    if(document.getElementById('screen-relatorio').classList.contains('active')) renderRelatorio();
+  }, ()=> showToast('Conexão com os lançamentos perdida.'));
 }
 
 // ---------------------------------------------------------------
@@ -3216,7 +3163,6 @@ document.getElementById('btnLogin').addEventListener('click', async ()=>{
   try{
     await fsSignIn(ROLE_EMAIL_MAP[usuario], senha);
     currentRole = usuario;
-    salvarSessao();
     await aoLogar();
     document.getElementById('loginSenha').value = '';
   }catch(e){
@@ -3228,12 +3174,12 @@ document.getElementById('btnLogin').addEventListener('click', async ()=>{
 document.getElementById('loginSenha').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('btnLogin').click(); }
 });
-document.getElementById('btnSair').addEventListener('click', ()=>{
+document.getElementById('btnSair').addEventListener('click', async ()=>{
   if(unsubscribeLancamentos) unsubscribeLancamentos();
   if(unsubscribeMateriais) unsubscribeMateriais();
   if(unsubscribeMovimentacoesEstoque) unsubscribeMovimentacoesEstoque();
   if(unsubscribeEnviosExternos) unsubscribeEnviosExternos();
-  limparSessao();
+  await sb.auth.signOut();
   location.reload();
 });
 
@@ -4732,18 +4678,16 @@ async function start(){
   renderConfigTabs();
   renderConfigConteudo();
 
-  const sessao = carregarSessaoSalva();
-  if(sessao && sessao.refreshToken && sessao.role){
-    fsAuth.refreshToken = sessao.refreshToken;
-    currentRole = sessao.role;
-    try{
-      await fsEnsureToken();
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const email = session && session.user && session.user.email;
+    const roleEncontrado = email && Object.keys(ROLE_EMAIL_MAP).find(r => ROLE_EMAIL_MAP[r] === email);
+    if(roleEncontrado){
+      currentRole = roleEncontrado;
       await aoLogar();
       return;
-    }catch(e){
-      limparSessao();
     }
-  }
+  }catch(e){}
   mostrarTelaLogin();
 }
 start();
