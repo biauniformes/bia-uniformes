@@ -918,6 +918,7 @@
     <div class="area-tabs" id="enviosSubTabs">
       <button class="area-tab active" data-enviostab="novo"><span class="dot" style="background:#171717"></span>Novo envio</button>
       <button class="area-tab" data-enviostab="lista"><span class="dot" style="background:#8B5E34"></span>Envios</button>
+      <button class="area-tab" data-enviostab="fornecedores"><span class="dot" style="background:#F27F22"></span>Fornecedores</button>
     </div>
 
     <!-- SUB: NOVO ENVIO -->
@@ -981,6 +982,19 @@
 
       <div id="enviosListaContainer"></div>
       <div class="empty-hint" id="enviosListaVazia" style="display:none;">Nenhum envio encontrado.</div>
+    </div>
+
+    <!-- SUB: FORNECEDORES -->
+    <div id="enviosFornecedores" style="display:none;">
+      <div class="card">
+        <h3>Fornecedores</h3>
+        <input type="text" id="buscaFornecedoresEnvio" class="search-tipos" placeholder="Buscar...">
+        <div class="chip-list" id="chipsFornecedoresEnvio"></div>
+        <div class="add-row">
+          <input type="text" id="novoFornecedorEnvio" placeholder="Nome do fornecedor">
+          <button class="btn btn-primary btn-sm" id="btnAddFornecedorEnvio">Adicionar</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -4145,8 +4159,9 @@ function subscribeEnviosExternos(){
   }, ()=> showToast('Conexão com os envios perdida.'));
 
   const unsubFornecedores = db.doc('enviosConfig/fornecedores').onSnapshot(snap=>{
-    fornecedoresExternos = (snap.exists && snap.data().lista) ? snap.data().lista : JSON.parse(JSON.stringify(FORNECEDORES_EXTERNOS_SEED));
+    fornecedoresExternos = (snap.exists && Array.isArray(snap.data())) ? snap.data() : JSON.parse(JSON.stringify(FORNECEDORES_EXTERNOS_SEED));
     salvarCache('fornecedoresExternos', fornecedoresExternos);
+    if(document.getElementById('screen-envios').classList.contains('active')) renderEnvios();
   }, ()=> showToast('Conexão com os fornecedores perdida.'));
 
   unsubscribeEnviosExternos = ()=>{ unsubLista(); unsubFornecedores(); };
@@ -4278,8 +4293,38 @@ document.querySelectorAll('#enviosSubTabs .area-tab').forEach(btn=>{
     activeEnviosTab = btn.dataset.enviostab;
     document.getElementById('enviosNovo').style.display = activeEnviosTab==='novo' ? '' : 'none';
     document.getElementById('enviosLista').style.display = activeEnviosTab==='lista' ? '' : 'none';
+    document.getElementById('enviosFornecedores').style.display = activeEnviosTab==='fornecedores' ? '' : 'none';
     renderEnvios();
   });
+});
+
+function renderFornecedoresEnvio(){
+  const busca = document.getElementById('buscaFornecedoresEnvio').value || '';
+  const q = normalizeSearch(busca.trim());
+  const listaCompleta = [...fornecedoresExternos].sort((a,b)=>a.localeCompare(b));
+  const filtrada = q ? listaCompleta.filter(n=>normalizeSearch(n).includes(q)) : listaCompleta;
+  renderChips(document.getElementById('chipsFornecedoresEnvio'), filtrada, async (idxFiltrado)=>{
+    const nomeRemover = filtrada[idxFiltrado];
+    await persistList('enviosConfig/fornecedores', ()=>fornecedoresExternos, v=>{fornecedoresExternos=v;}, novo=>{
+      const i = novo.indexOf(nomeRemover);
+      if(i>=0) novo.splice(i,1);
+    });
+  });
+}
+
+document.getElementById('buscaFornecedoresEnvio').addEventListener('input', renderFornecedoresEnvio);
+
+document.getElementById('btnAddFornecedorEnvio').addEventListener('click', async ()=>{
+  const input = document.getElementById('novoFornecedorEnvio');
+  const nome = input.value.trim();
+  if(!nome) return;
+  if(fornecedoresExternos.includes(nome)){ showToast('Esse fornecedor já existe.'); return; }
+  await persistList('enviosConfig/fornecedores', ()=>fornecedoresExternos, v=>{fornecedoresExternos=v;}, novo=>{
+    novo.push(nome);
+  });
+  input.value = '';
+  renderFornecedoresEnvio();
+  showToast('Fornecedor adicionado!');
 });
 
 document.querySelectorAll('#enviosLista [data-statusenvio]').forEach(btn=>{
@@ -4422,6 +4467,7 @@ function renderEnvios(){
   if(!document.getElementById('envData').value) document.getElementById('envData').value = todayISO();
   renderGradeTamanhosEnvio();
   renderListaEnvios();
+  renderFornecedoresEnvio();
 }
 
 // ---------------------------------------------------------------
