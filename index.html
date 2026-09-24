@@ -145,6 +145,10 @@
   .envio-status{padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
   .envio-status.aberto{background:var(--accent-soft);color:var(--accent-dark);}
   .envio-status.retornado{background:var(--success-soft);color:var(--success);}
+  .envio-status.parcial{background:var(--danger-soft);color:var(--danger);}
+  .envio-faltando{background:var(--danger-soft);color:var(--danger);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;margin-bottom:10px;}
+  .envio-form-retorno{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;}
+  .envio-form-retorno-titulo{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:8px;}
   .envio-itens{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;}
   .envio-item-chip{background:var(--primary-soft);color:var(--primary);padding:5px 12px;border-radius:999px;font-size:12.5px;font-weight:700;}
   .envio-total{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px;}
@@ -655,6 +659,7 @@
       <div class="filter-row">
         <button class="pill active" data-statusrelatorioenvios="todos">Todos</button>
         <button class="pill" data-statusrelatorioenvios="ENVIADO">Em aberto</button>
+        <button class="pill" data-statusrelatorioenvios="RETORNADO_PARCIAL">Incompletos</button>
         <button class="pill" data-statusrelatorioenvios="RETORNADO">Retornados</button>
       </div>
 
@@ -4407,18 +4412,43 @@ document.getElementById('btnSalvarEnvio').addEventListener('click', async ()=>{
   renderEnvios();
 });
 
-window.marcarEnvioRetornado = async function(id){
-  if(!confirm('Marcar este envio como retornado (já voltou pra empresa)?')) return;
+let envioRetornoAberto = null; // id do envio com o formulário de conferência de retorno aberto
+let quantidadesRetorno = {}; // { tamanho: quantidadeDigitadaString }
+
+window.abrirFormularioRetorno = function(id){
   const envio = enviosExternos.find(e=>e.id===id);
   if(!envio) return;
-  const atualizacao = { status:'RETORNADO', dataRetorno: todayISO() };
+  envioRetornoAberto = id;
+  quantidadesRetorno = {};
+  (envio.itens||[]).forEach(i=>{ quantidadesRetorno[i.tamanho] = String(i.quantidade); });
+  renderListaEnvios();
+};
+
+window.cancelarFormularioRetorno = function(){
+  envioRetornoAberto = null;
+  quantidadesRetorno = {};
+  renderListaEnvios();
+};
+
+window.confirmarRetorno = async function(id){
+  const envio = enviosExternos.find(e=>e.id===id);
+  if(!envio) return;
+  const itensRetornados = (envio.itens||[]).map(i=>({
+    tamanho: i.tamanho,
+    quantidade: Math.max(0, parseFloat(String(quantidadesRetorno[i.tamanho]||'0').replace(',','.')) || 0)
+  }));
+  const totalRetornado = itensRetornados.reduce((s,i)=>s+i.quantidade, 0);
+  const status = totalRetornado >= envio.quantidadeTotal ? 'RETORNADO' : 'RETORNADO_PARCIAL';
+  const atualizacao = { status, dataRetorno: todayISO(), itensRetornados };
   if(dbReady){
     try{ await db.collection('enviosExternos').doc(id).set(atualizacao); }
     catch(e){ showToast('Não foi possível atualizar.'); return; }
   }
   Object.assign(envio, atualizacao);
+  envioRetornoAberto = null;
+  quantidadesRetorno = {};
   renderEnvios();
-  showToast('Envio marcado como retornado!');
+  showToast(status==='RETORNADO' ? 'Envio marcado como retornado!' : 'Retorno parcial registrado.');
 };
 
 window.excluirEnvio = async function(id){
@@ -4443,6 +4473,36 @@ function renderListaEnvios(){
   container.innerHTML = lista.map(env=>{
     const diasAberto = env.status==='ENVIADO' ? Math.max(0, Math.round((hoje - new Date(env.data+'T00:00:00'))/86400000)) : null;
     const itensHtml = (env.itens||[]).map(i=>`<span class="envio-item-chip">${esc(i.tamanho)}: ${i.quantidade}</span>`).join('');
+    const statusInfo = env.status==='ENVIADO' ? {classe:'aberto', texto:'Em aberto'}
+      : env.status==='RETORNADO_PARCIAL' ? {classe:'parcial', texto:'Retorno incompleto'}
+      : {classe:'retornado', texto:'Retornado '+toBR(env.dataRetorno)};
+
+    let faltandoHtml = '';
+    if(env.status==='RETORNADO_PARCIAL' && env.itensRetornados){
+      const faltas = (env.itens||[]).map(i=>{
+        const ret = (env.itensRetornados||[]).find(r=>r.tamanho===i.tamanho);
+        const faltou = i.quantidade - (ret ? ret.quantidade : 0);
+        return faltou>0 ? `${i.tamanho}: ${faltou}` : null;
+      }).filter(Boolean);
+      if(faltas.length) faltandoHtml = `<div class="envio-faltando">⚠️ Faltam: ${faltas.map(esc).join(', ')}</div>`;
+    }
+
+    const formularioRetorno = envioRetornoAberto===env.id ? `
+      <div class="envio-form-retorno">
+        <div class="envio-form-retorno-titulo">Confira quanto voltou de cada tamanho:</div>
+        ${(env.itens||[]).map(i=>`
+          <div class="tamanho-qtd-row">
+            <div class="tamanho-qtd-label">${esc(i.tamanho)} <span style="color:var(--ink-muted);font-weight:400;">(enviado: ${i.quantidade})</span></div>
+            <input type="number" inputmode="numeric" min="0" data-qtd-retorno="${esc(i.tamanho)}" value="${esc(quantidadesRetorno[i.tamanho]||'')}">
+          </div>
+        `).join('')}
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-primary btn-sm" onclick="confirmarRetorno('${env.id}')">Confirmar retorno</button>
+          <button class="btn btn-ghost btn-sm" onclick="cancelarFormularioRetorno()">Cancelar</button>
+        </div>
+      </div>
+    ` : '';
+
     return `
       <div class="envio-card">
         <div class="envio-card-top">
@@ -4450,17 +4510,23 @@ function renderListaEnvios(){
             <div class="envio-numero">Nº ${esc(env.numeroRegistro)} · ${esc(env.tipoServico)} · ${toBR(env.data)}${diasAberto!==null ? ' · '+diasAberto+' dia'+(diasAberto===1?'':'s')+' em aberto' : ''}</div>
             <div class="envio-peca">${esc(env.peca)} — ${esc(env.fornecedor)}</div>
           </div>
-          <span class="envio-status ${env.status==='ENVIADO'?'aberto':'retornado'}">${env.status==='ENVIADO'?'Em aberto':'Retornado '+toBR(env.dataRetorno)}</span>
+          <span class="envio-status ${statusInfo.classe}">${statusInfo.texto}</span>
         </div>
         <div class="envio-itens">${itensHtml}</div>
         <div class="envio-total">Total: ${env.quantidadeTotal} peças${env.obs ? ' · '+esc(env.obs) : ''}</div>
+        ${faltandoHtml}
+        ${formularioRetorno}
         <div style="display:flex;gap:8px;">
-          ${env.status==='ENVIADO' ? `<button class="btn btn-primary btn-sm" onclick="marcarEnvioRetornado('${env.id}')">✓ Marcar como retornado</button>` : ''}
+          ${env.status==='ENVIADO' && envioRetornoAberto!==env.id ? `<button class="btn btn-primary btn-sm" onclick="abrirFormularioRetorno('${env.id}')">✓ Marcar como retornado</button>` : ''}
           <button class="btn-danger-ghost" onclick="excluirEnvio('${env.id}')">Excluir</button>
         </div>
       </div>
     `;
   }).join('');
+
+  container.querySelectorAll('[data-qtd-retorno]').forEach(input=>{
+    input.addEventListener('input', ()=>{ quantidadesRetorno[input.dataset.qtdRetorno] = input.value; });
+  });
 }
 
 function renderEnvios(){
@@ -4490,9 +4556,21 @@ function diasEmAberto(env){
   return Math.max(0, Math.round((hoje - new Date(env.data+'T00:00:00'))/86400000));
 }
 
+// conta como "pendente" tanto o que nunca voltou (ENVIADO) quanto o que
+// voltou faltando peça (RETORNADO_PARCIAL) — só RETORNADO conta como 0
+function estaPendente(env){ return env.status==='ENVIADO' || env.status==='RETORNADO_PARCIAL'; }
+function pecasPendentes(env){
+  if(env.status==='ENVIADO') return env.quantidadeTotal||0;
+  if(env.status==='RETORNADO_PARCIAL'){
+    const totalRetornado = (env.itensRetornados||[]).reduce((s,i)=>s+i.quantidade,0);
+    return Math.max(0, (env.quantidadeTotal||0) - totalRetornado);
+  }
+  return 0;
+}
+
 function renderHeroEnvios(){
-  const abertos = enviosExternos.filter(e=>e.status==='ENVIADO');
-  const totalPecasAbertas = abertos.reduce((s,e)=>s+(e.quantidadeTotal||0),0);
+  const abertos = enviosExternos.filter(estaPendente);
+  const totalPecasAbertas = abertos.reduce((s,e)=>s+pecasPendentes(e),0);
   document.getElementById('enviosHeroNum').textContent = totalPecasAbertas;
   document.getElementById('enviosHeroSub').textContent = `peças aguardando retorno em ${abertos.length} envio${abertos.length===1?'':'s'}`;
 
@@ -4516,8 +4594,8 @@ function renderCardsTipoEnvios(){
     {tipo:'Outro', icon:'📦', color:'#6B6F76'}
   ];
   grid.innerHTML = infos.map(info=>{
-    const abertos = enviosExternos.filter(e=>e.tipoServico===info.tipo && e.status==='ENVIADO');
-    const totalPecas = abertos.reduce((s,e)=>s+(e.quantidadeTotal||0),0);
+    const abertos = enviosExternos.filter(e=>e.tipoServico===info.tipo && estaPendente(e));
+    const totalPecas = abertos.reduce((s,e)=>s+pecasPendentes(e),0);
     return `
       <button type="button" class="dash-team-card" style="--team-color:${info.color};cursor:default;">
         <div class="dash-team-icon">${info.icon}</div>
@@ -4531,7 +4609,7 @@ function renderCardsTipoEnvios(){
 
 function calcularInsightsEnvios(filtradas){
   const insights = [];
-  const abertos = enviosExternos.filter(e=>e.status==='ENVIADO');
+  const abertos = enviosExternos.filter(estaPendente);
 
   const comDias = abertos.map(e=>({e, dias: diasEmAberto(e)})).sort((a,b)=>b.dias-a.dias);
   const atrasados = comDias.filter(x=>x.dias>=LIMIAR_ENVIO_ATRASADO);
@@ -4540,8 +4618,14 @@ function calcularInsightsEnvios(filtradas){
     insights.push({icon:'🚨', text:`${atrasados.length} envio${atrasados.length===1?'':'s'} há ${LIMIAR_ENVIO_ATRASADO}+ dias sem voltar: ${top}${atrasados.length>3?'...':''}.`});
   }
 
+  const parciais = enviosExternos.filter(e=>e.status==='RETORNADO_PARCIAL');
+  if(parciais.length){
+    const totalFaltando = parciais.reduce((s,e)=>s+pecasPendentes(e),0);
+    insights.push({icon:'🧩', text:`${parciais.length} envio${parciais.length===1?'':'s'} voltou incompleto — ${totalFaltando} peça${totalFaltando===1?'':'s'} ainda faltando.`});
+  }
+
   const porFornecedorAberto = {};
-  abertos.forEach(e=>{ porFornecedorAberto[e.fornecedor] = (porFornecedorAberto[e.fornecedor]||0) + (e.quantidadeTotal||0); });
+  abertos.forEach(e=>{ porFornecedorAberto[e.fornecedor] = (porFornecedorAberto[e.fornecedor]||0) + pecasPendentes(e); });
   const topFornecedorAberto = Object.entries(porFornecedorAberto).sort((a,b)=>b[1]-a[1])[0];
   if(topFornecedorAberto){
     insights.push({icon:'📌', text:`"${topFornecedorAberto[0]}" está com mais peças em aberto no momento: ${topFornecedorAberto[1]} peças.`});
@@ -4584,7 +4668,7 @@ function renderInsightsEnviosUI(filtradas){
 }
 
 function renderTabelaEnviosAtrasados(){
-  const abertos = enviosExternos.filter(e=>e.status==='ENVIADO')
+  const abertos = enviosExternos.filter(estaPendente)
     .map(e=>({e, dias: diasEmAberto(e)}))
     .sort((a,b)=>b.dias-a.dias);
   const tbody = document.getElementById('tabelaEnviosAtrasados');
@@ -4597,7 +4681,7 @@ function renderTabelaEnviosAtrasados(){
       <td>${esc(e.tipoServico)}</td>
       <td>${toBR(e.data)}</td>
       <td>${dias}</td>
-      <td>${e.quantidadeTotal}</td>
+      <td>${pecasPendentes(e)}${e.status==='RETORNADO_PARCIAL' ? ' (parcial)' : ''}</td>
     </tr>
   `).join('');
 }
@@ -4610,9 +4694,9 @@ function criarOuAtualizarChartEnvios(canvasId, config){
 }
 
 function renderChartFornecedorEnvios(){
-  const abertos = enviosExternos.filter(e=>e.status==='ENVIADO');
+  const abertos = enviosExternos.filter(estaPendente);
   const porFornecedor = {};
-  abertos.forEach(e=>{ porFornecedor[e.fornecedor] = (porFornecedor[e.fornecedor]||0) + (e.quantidadeTotal||0); });
+  abertos.forEach(e=>{ porFornecedor[e.fornecedor] = (porFornecedor[e.fornecedor]||0) + pecasPendentes(e); });
   const lista = Object.entries(porFornecedor).sort((a,b)=>b[1]-a[1]).slice(0,10);
   criarOuAtualizarChartEnvios('chartEnviosFornecedor', {
     type:'bar',
@@ -4663,7 +4747,7 @@ function renderTabelaEnviosPeriodo(){
       <td>${esc(e.tipoServico)}</td>
       <td>${esc(e.peca)}</td>
       <td>${e.quantidadeTotal}</td>
-      <td>${e.status==='ENVIADO'?'Em aberto':'Retornado'}</td>
+      <td>${e.status==='ENVIADO'?'Em aberto':e.status==='RETORNADO_PARCIAL'?'Retorno incompleto':'Retornado'}</td>
     </tr>
   `).join('');
   if(lista.length > 500){
@@ -4706,7 +4790,7 @@ document.getElementById('btnExportarEnvios').addEventListener('click', async ()=
   if(filtradas.length===0){ showToast('Nada para exportar neste período.'); return; }
 
   const labelPeriodo = {hoje:'Hoje', semana:'Últimos 7 dias', mes:'Este mês', tudo:'Tudo'}[activePeriodoRelatorioEnvios] || activePeriodoRelatorioEnvios;
-  const labelStatus = {todos:'Todos', ENVIADO:'Em aberto', RETORNADO:'Retornados'}[activeStatusRelatorioEnvios] || 'Todos';
+  const labelStatus = {todos:'Todos', ENVIADO:'Em aberto', RETORNADO_PARCIAL:'Incompletos', RETORNADO:'Retornados'}[activeStatusRelatorioEnvios] || 'Todos';
   const geradoEm = new Date().toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
 
   const wb = new ExcelJS.Workbook();
@@ -4718,8 +4802,8 @@ document.getElementById('btnExportarEnvios').addEventListener('click', async ()=
   estilizarTituloPlanilha(wsResumo, 'Envios Externos — Bia Uniformes',
     `Período: ${labelPeriodo} · Status: ${labelStatus} · Gerado em ${geradoEm}`, 4);
 
-  const abertos = enviosExternos.filter(e=>e.status==='ENVIADO');
-  const totalPecasAbertas = abertos.reduce((s,e)=>s+(e.quantidadeTotal||0),0);
+  const abertos = enviosExternos.filter(estaPendente);
+  const totalPecasAbertas = abertos.reduce((s,e)=>s+pecasPendentes(e),0);
   wsResumo.addRow(['Métrica', 'Valor']);
   estilizarCabecalhoLinha(wsResumo.lastRow, CORES_PLANILHA.primary);
   wsResumo.addRow(['Envios em aberto agora', abertos.length]);
@@ -4740,17 +4824,20 @@ document.getElementById('btnExportarEnvios').addEventListener('click', async ()=
   wsEnvios.columns = [
     {header:'Nº', width:12}, {header:'Data envio', width:14}, {header:'Fornecedor', width:20},
     {header:'Tipo de serviço', width:16}, {header:'Peça', width:30}, {header:'Tamanhos', width:26},
-    {header:'Quantidade total', width:16}, {header:'Status', width:14}, {header:'Data retorno', width:14}, {header:'Observações', width:24}
+    {header:'Quantidade total', width:16}, {header:'Status', width:16}, {header:'Faltando', width:12},
+    {header:'Data retorno', width:14}, {header:'Observações', width:24}
   ];
   estilizarCabecalhoLinha(wsEnvios.getRow(1), CORES_PLANILHA.primary);
   const ordenados = [...filtradas].sort((a,b)=> (b.criadoEm||0)-(a.criadoEm||0));
+  const labelStatusLinha = {ENVIADO:'Em aberto', RETORNADO_PARCIAL:'Retorno incompleto', RETORNADO:'Retornado'};
   ordenados.forEach(e=>{
     const tamanhosStr = (e.itens||[]).map(i=>`${i.tamanho}:${i.quantidade}`).join(', ');
     const row = wsEnvios.addRow([
       e.numeroRegistro, toBR(e.data), e.fornecedor, e.tipoServico, e.peca, tamanhosStr,
-      e.quantidadeTotal, e.status==='ENVIADO'?'Em aberto':'Retornado', e.dataRetorno?toBR(e.dataRetorno):'', e.obs||''
+      e.quantidadeTotal, labelStatusLinha[e.status]||e.status, pecasPendentes(e) || '', e.dataRetorno?toBR(e.dataRetorno):'', e.obs||''
     ]);
     if(e.status==='ENVIADO') row.getCell(8).fill = {type:'pattern', pattern:'solid', fgColor:{argb: CORES_PLANILHA.accentLight}};
+    if(e.status==='RETORNADO_PARCIAL') row.getCell(8).fill = {type:'pattern', pattern:'solid', fgColor:{argb: CORES_PLANILHA.dangerLight}};
   });
   wsEnvios.views = [{state:'frozen', ySplit:1}];
 
