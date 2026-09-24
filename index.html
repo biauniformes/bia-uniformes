@@ -1346,6 +1346,25 @@ function parseDocPath(path){
   return { kind:'row', table: TABELA_POR_COLECAO[first] || first, id: second };
 }
 
+// Carrega com algumas tentativas automáticas antes de desistir — sem isso,
+// uma falha passageira de rede bem na hora do login (quando várias telas
+// carregam ao mesmo tempo) deixaria aquele dado "travado" até recarregar a
+// página, já que o tempo real só avisa sobre MUDANÇAS futuras, não reenvia
+// sozinho o que já devia ter chegado na carga inicial.
+function carregarComRetry(carregarUmaVez, next, err, estadoAtivo){
+  const tentar = (tentativas)=>{
+    tentativas = tentativas || 0;
+    carregarUmaVez().then(resultado=>{
+      if(estadoAtivo()) next(resultado);
+    }).catch(e=>{
+      if(!estadoAtivo()) return;
+      if(tentativas < 3) setTimeout(()=>tentar(tentativas+1), 1500*(tentativas+1));
+      else if(err) err(e);
+    });
+  };
+  return tentar;
+}
+
 // --- shim com a mesma "forma" do antigo db.doc()/db.collection(), agora
 //     sobre o Supabase (Postgres + tempo real de verdade via websocket,
 //     em vez de perguntar pro banco a cada 60s) ---
@@ -1382,15 +1401,12 @@ function fsDoc(path){
     },
     onSnapshot(next, err){
       let ativo = true;
-      const carregar = async ()=>{
-        try{ if(ativo) next(await this.get()); }
-        catch(e){ if(ativo && err) err(e); }
-      };
+      const carregar = carregarComRetry(()=>this.get(), next, err, ()=>ativo);
       carregar();
       const filtro = info.kind==='config'
         ? { event:'*', schema:'public', table:'config', filter:`key=eq.${info.key}` }
         : { event:'*', schema:'public', table:info.table, filter:`id=eq.${info.id}` };
-      const canal = sb.channel('doc:'+path).on('postgres_changes', filtro, carregar).subscribe();
+      const canal = sb.channel('doc:'+path).on('postgres_changes', filtro, ()=>carregar()).subscribe();
       return ()=>{ ativo = false; sb.removeChannel(canal); };
     },
     collection(sub){ return fsCollection(path + '/' + sub); }
@@ -1430,13 +1446,10 @@ function fsCollection(path, query){
     async get(){ return executarQuery(path, query); },
     onSnapshot(next, err){
       let ativo = true;
-      const carregar = async ()=>{
-        try{ if(ativo) next(await executarQuery(path, query)); }
-        catch(e){ if(ativo && err) err(e); }
-      };
+      const carregar = carregarComRetry(()=>executarQuery(path, query), next, err, ()=>ativo);
       carregar();
       const canal = sb.channel('col:'+path+':'+JSON.stringify(query))
-        .on('postgres_changes', { event:'*', schema:'public', table }, carregar)
+        .on('postgres_changes', { event:'*', schema:'public', table }, ()=>carregar())
         .subscribe();
       return ()=>{ ativo = false; sb.removeChannel(canal); };
     }
