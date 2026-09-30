@@ -220,6 +220,12 @@
   .produtividade-card-secundario{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--ink-muted);}
   .produtividade-card-secundario b{color:var(--ink);}
   .produtividade-card-vazio{font-size:12.5px;color:var(--ink-muted);padding:8px 0;}
+  .produtividade-tarefa-linha{padding:9px 0;border-top:1px solid var(--border);}
+  .produtividade-tarefa-linha:first-of-type{border-top:none;padding-top:2px;}
+  .produtividade-tarefa-nome{font-size:11.5px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;}
+  .produtividade-tarefa-num{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--primary);line-height:1.2;}
+  .produtividade-tarefa-num span{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--ink-muted);margin-left:4px;}
+  .produtividade-tarefa-vazio{font-size:12px;color:var(--ink-muted);}
 
   .produtividade-funcionaria{margin-bottom:18px;}
   .produtividade-funcionaria:last-child{margin-bottom:0;}
@@ -2395,24 +2401,15 @@ function renderPeriodoCaseado(filtradas){
   document.getElementById('statTarde').textContent = tarde;
 }
 
-// --- Revisão e Dobra: produtividade (peças/min e peças/h, manual x máquina) ---
+// --- Revisão e Dobra: produtividade (peças/min e peças/h) — conta TODA
+//     tarefa cadastrada (dobra manual, máquina, revisão, lacrar/etiquetar
+//     etc.), uma linha por tarefa que a pessoa já lançou, sem lista fixa ---
 const HORAS_TRABALHADAS_POR_DIA = 8.8;
 let produtividadeDobraAberta = false;
 
-// classifica a tarefa em 'manual' ou 'maquina' pelo texto, sem depender de
-// uma lista fixa de nomes — assim continua funcionando mesmo se novas
-// variações de nome de tarefa forem cadastradas depois (ex: "Dobra manual")
-function classificarTarefaDobra(tarefa){
-  const t = normalizeSearch(tarefa||'');
-  if(!t.includes('dobr')) return null;
-  if(t.includes('manual')) return 'manual';
-  if(t.includes('maquina')) return 'maquina';
-  return null;
-}
-
 function calcularProdutividadeDobraPorFuncionaria(){
   const base = (dashArea && dashAreaCarregada===dashArea && entriesDetalheArea) ? entriesDetalheArea : entries;
-  const todasRevisao = base.filter(e=>e.area==='RevisaoDobra');
+  const todasRevisao = base.filter(e=>e.area==='RevisaoDobra' && e.tarefa);
   const funcionarias = [...new Set(todasRevisao.map(e=>e.funcionaria))].sort((a,b)=>a.localeCompare(b));
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -2433,47 +2430,30 @@ function calcularProdutividadeDobraPorFuncionaria(){
   const resultado = {};
   funcionarias.forEach(func=>{
     const doFuncionaria = todasRevisao.filter(e=>e.funcionaria===func);
-    resultado[func] = {};
+    const tarefas = [...new Set(doFuncionaria.map(e=>e.tarefa))];
+    resultado[func] = { tarefas, periodos: {} };
     periodos.forEach(periodo=>{
-      const porTipo = { manual:{pecas:0, dias:new Set()}, maquina:{pecas:0, dias:new Set()} };
+      const porTarefa = {};
       doFuncionaria.filter(e=>dentroPeriodo(e,periodo)).forEach(e=>{
-        const tipo = classificarTarefaDobra(e.tarefa);
-        if(!tipo) return;
-        porTipo[tipo].pecas += (e.quantidade||0);
-        porTipo[tipo].dias.add(e.data);
+        if(!porTarefa[e.tarefa]) porTarefa[e.tarefa] = {pecas:0, dias:new Set()};
+        porTarefa[e.tarefa].pecas += (e.quantidade||0);
+        porTarefa[e.tarefa].dias.add(e.data);
       });
-      resultado[func][periodo] = {};
-      ['manual','maquina'].forEach(tipo=>{
-        const dias = porTipo[tipo].dias.size;
+      resultado[func].periodos[periodo] = {};
+      tarefas.forEach(tarefa=>{
+        const t = porTarefa[tarefa] || {pecas:0, dias:new Set()};
+        const dias = t.dias.size;
         const horas = dias * HORAS_TRABALHADAS_POR_DIA;
         const minutos = horas * 60;
-        resultado[func][periodo][tipo] = {
-          pecas: porTipo[tipo].pecas, dias,
-          porHora: horas>0 ? porTipo[tipo].pecas/horas : 0,
-          porMinuto: minutos>0 ? porTipo[tipo].pecas/minutos : 0
+        resultado[func].periodos[periodo][tarefa] = {
+          pecas: t.pecas, dias,
+          porHora: horas>0 ? t.pecas/horas : 0,
+          porMinuto: minutos>0 ? t.pecas/minutos : 0
         };
       });
     });
   });
-  return { resultado, periodos, customDe, customAte };
-}
-
-const INFO_MODO_DOBRA = {
-  manual: {label:'Manual', emoji:'✋'},
-  maquina: {label:'Máquina', emoji:'⚙️'}
-};
-
-// decide se a funcionária é majoritariamente manual ou máquina, olhando o
-// mês primeiro e só recorrendo a períodos menores se o mês estiver zerado
-function modoPrincipalFuncionaria(dadosFunc){
-  for(const periodo of ['mes','semana','hoje','personalizado']){
-    const p = dadosFunc[periodo];
-    if(!p) continue;
-    if(p.manual.pecas !== p.maquina.pecas){
-      return p.manual.pecas > p.maquina.pecas ? 'manual' : 'maquina';
-    }
-  }
-  return 'manual';
+  return { resultado, periodos };
 }
 
 function badgeTendenciaDobra(valorFoco, valorMes){
@@ -2506,15 +2486,16 @@ function renderProdutividadeDobra(){
   let totalPecasFoco = 0;
   const pessoasFoco = new Set();
   funcionarias.forEach(func=>{
-    const f = dados[func][periodoFoco];
-    if(!f) return;
-    totalPecasFoco += f.manual.pecas + f.maquina.pecas;
-    if(f.manual.pecas>0 || f.maquina.pecas>0) pessoasFoco.add(func);
+    const p = dados[func].periodos[periodoFoco];
+    Object.values(p).forEach(t=>{
+      totalPecasFoco += t.pecas;
+      if(t.pecas>0) pessoasFoco.add(func);
+    });
   });
   resumoEl.innerHTML = `
     <div class="produtividade-resumo">
       <div class="produtividade-resumo-item">
-        <div class="produtividade-resumo-label">Total dobrado · ${esc(labelFoco)}</div>
+        <div class="produtividade-resumo-label">Total produzido · ${esc(labelFoco)}</div>
         <div class="produtividade-resumo-num">${totalPecasFoco}<span>peças</span></div>
       </div>
       <div class="produtividade-resumo-item">
@@ -2526,25 +2507,29 @@ function renderProdutividadeDobra(){
 
   container.innerHTML = `<div class="produtividade-cards">${funcionarias.map(func=>{
     const d = dados[func];
-    const modo = modoPrincipalFuncionaria(d);
-    const outroModo = modo==='manual' ? 'maquina' : 'manual';
-    const info = INFO_MODO_DOBRA[modo];
-    const foco = d[periodoFoco][modo];
-    const mes = d.mes[modo];
-    const tendencia = periodoFoco!=='mes' ? badgeTendenciaDobra(foco.porHora, mes.porHora) : '';
-
+    // tarefas ordenadas pela que mais produziu no mês, pra mostrar a
+    // principal primeiro
+    const tarefasOrdenadas = [...d.tarefas].sort((a,b)=>
+      (d.periodos.mes[b]?.pecas||0) - (d.periodos.mes[a]?.pecas||0)
+    );
+    const linhas = tarefasOrdenadas.map(tarefa=>{
+      const foco = d.periodos[periodoFoco][tarefa];
+      const mes = d.periodos.mes[tarefa];
+      const tendencia = (periodoFoco!=='mes' && foco.pecas>0) ? badgeTendenciaDobra(foco.porHora, mes.porHora) : '';
+      return `
+        <div class="produtividade-tarefa-linha">
+          <div class="produtividade-tarefa-nome">${esc(tarefa)}</div>
+          ${foco.pecas>0 ? `
+            <div class="produtividade-tarefa-num">${foco.porHora.toFixed(1)} <span>pç/h (${foco.porMinuto.toFixed(2)}/min)</span></div>
+            ${tendencia}
+          ` : `<div class="produtividade-tarefa-vazio">Sem lançamento em ${esc(labelFoco)}${mes.pecas>0 ? ` · média mensal: ${mes.porHora.toFixed(1)} pç/h` : ''}</div>`}
+        </div>
+      `;
+    }).join('');
     return `
       <div class="produtividade-card-operador">
-        <div class="produtividade-card-header">
-          <span>${info.emoji}</span> ${esc(func)} <span class="produtividade-card-modo">${info.label}</span>
-        </div>
-        ${foco.pecas>0 ? `
-          <div class="produtividade-card-num">${foco.porHora.toFixed(1)}<span>pç/h (${foco.porMinuto.toFixed(2)}/min)</span></div>
-          ${tendencia}
-        ` : `
-          <div class="produtividade-card-vazio">Sem lançamento em ${esc(labelFoco)}.</div>
-          ${mes.pecas>0 ? `<div class="produtividade-card-secundario">Média mensal: ${mes.porHora.toFixed(1)} pç/h</div>` : ''}
-        `}
+        <div class="produtividade-card-header">${esc(func)}</div>
+        ${linhas}
       </div>
     `;
   }).join('')}</div>`;
