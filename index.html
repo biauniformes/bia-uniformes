@@ -2531,9 +2531,6 @@ function renderProdutividadeDobra(){
     const info = INFO_MODO_DOBRA[modo];
     const foco = d[periodoFoco][modo];
     const mes = d.mes[modo];
-    const semana = d.semana[modo];
-    const outroMes = d.mes[outroModo];
-    const outroTemDado = outroMes.pecas>0 || semana && d.semana[outroModo].pecas>0 || (d.personalizado && d.personalizado[outroModo].pecas>0);
     const tendencia = periodoFoco!=='mes' ? badgeTendenciaDobra(foco.porHora, mes.porHora) : '';
 
     return `
@@ -2542,14 +2539,12 @@ function renderProdutividadeDobra(){
           <span>${info.emoji}</span> ${esc(func)} <span class="produtividade-card-modo">${info.label}</span>
         </div>
         ${foco.pecas>0 ? `
-          <div class="produtividade-card-num">${foco.porHora.toFixed(1)}<span>pç/h · ${esc(labelFoco)}</span></div>
-          <div class="produtividade-card-submetrica">${foco.porMinuto.toFixed(2)} pç/min · ${foco.pecas} peças</div>
+          <div class="produtividade-card-num">${foco.porHora.toFixed(1)}<span>pç/h (${foco.porMinuto.toFixed(2)}/min)</span></div>
           ${tendencia}
-        ` : `<div class="produtividade-card-vazio">Sem lançamento de dobra em ${esc(labelFoco)}.</div>`}
-        <div class="produtividade-card-secundario">
-          <b>Semana:</b> ${semana.porHora.toFixed(1)} pç/h · <b>Mês:</b> ${mes.porHora.toFixed(1)} pç/h
-          ${outroTemDado ? ` · <b>${INFO_MODO_DOBRA[outroModo].label}:</b> ${outroMes.porHora.toFixed(1)} pç/h (mês)` : ''}
-        </div>
+        ` : `
+          <div class="produtividade-card-vazio">Sem lançamento em ${esc(labelFoco)}.</div>
+          ${mes.pecas>0 ? `<div class="produtividade-card-secundario">Média mensal: ${mes.porHora.toFixed(1)} pç/h</div>` : ''}
+        `}
       </div>
     `;
   }).join('')}</div>`;
