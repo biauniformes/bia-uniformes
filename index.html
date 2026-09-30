@@ -501,6 +501,22 @@
         </div>
       </div>
 
+      <div class="card" id="cardProdutividadeRevisao" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <h3 style="margin:0;">⚙️ Produtividade de dobra</h3>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnToggleProdutividadeRevisao" style="white-space:nowrap;">Ver médias</button>
+        </div>
+        <div id="produtividadeRevisaoConteudo" style="display:none;margin-top:14px;">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Período</th><th>Manual (pç/min)</th><th>Manual (pç/h)</th><th>Máquina (pç/min)</th><th>Máquina (pç/h)</th></tr></thead>
+              <tbody id="tabelaProdutividadeDobra"></tbody>
+            </table>
+          </div>
+          <div class="empty-hint" style="margin-top:6px;">Considerando 8,8h de trabalho por dia. A média conta só os dias com lançamento no período.</div>
+        </div>
+      </div>
+
       <div class="card insight-card" id="cardInsights">
         <h3>✨ Análise automática</h3>
         <div id="insightsList"></div>
@@ -2319,6 +2335,87 @@ function renderPeriodoCaseado(filtradas){
   document.getElementById('statTarde').textContent = tarde;
 }
 
+// --- Revisão e Dobra: produtividade (peças/min e peças/h, manual x máquina) ---
+const HORAS_TRABALHADAS_POR_DIA = 8.8;
+let produtividadeDobraAberta = false;
+
+// classifica a tarefa em 'manual' ou 'maquina' pelo texto, sem depender de
+// uma lista fixa de nomes — assim continua funcionando mesmo se novas
+// variações de nome de tarefa forem cadastradas depois (ex: "Dobra manual")
+function classificarTarefaDobra(tarefa){
+  const t = normalizeSearch(tarefa||'');
+  if(!t.includes('dobr')) return null;
+  if(t.includes('manual')) return 'manual';
+  if(t.includes('maquina')) return 'maquina';
+  return null;
+}
+
+function calcularProdutividadeDobra(){
+  const base = (dashArea && dashAreaCarregada===dashArea && entriesDetalheArea) ? entriesDetalheArea : entries;
+  const todasRevisao = base.filter(e=>e.area==='RevisaoDobra');
+
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const seteDiasAtras = new Date(hoje); seteDiasAtras.setDate(hoje.getDate()-6);
+  function dentroPeriodo(e, periodo){
+    const d = new Date(e.data+'T00:00:00');
+    if(periodo==='hoje') return d.getTime()===hoje.getTime();
+    if(periodo==='semana') return d>=seteDiasAtras && d<=hoje;
+    return d.getMonth()===hoje.getMonth() && d.getFullYear()===hoje.getFullYear(); // mes
+  }
+
+  const resultado = {};
+  ['hoje','semana','mes'].forEach(periodo=>{
+    const porTipo = { manual:{pecas:0, dias:new Set()}, maquina:{pecas:0, dias:new Set()} };
+    todasRevisao.filter(e=>dentroPeriodo(e,periodo)).forEach(e=>{
+      const tipo = classificarTarefaDobra(e.tarefa);
+      if(!tipo) return;
+      porTipo[tipo].pecas += (e.quantidade||0);
+      porTipo[tipo].dias.add(e.data);
+    });
+    resultado[periodo] = {};
+    ['manual','maquina'].forEach(tipo=>{
+      const dias = porTipo[tipo].dias.size;
+      const horas = dias * HORAS_TRABALHADAS_POR_DIA;
+      const minutos = horas * 60;
+      resultado[periodo][tipo] = {
+        pecas: porTipo[tipo].pecas, dias,
+        porHora: horas>0 ? porTipo[tipo].pecas/horas : 0,
+        porMinuto: minutos>0 ? porTipo[tipo].pecas/minutos : 0
+      };
+    });
+  });
+  return resultado;
+}
+
+function renderProdutividadeDobra(){
+  const dados = calcularProdutividadeDobra();
+  const labelPeriodo = {hoje:'Hoje', semana:'Últimos 7 dias', mes:'Este mês'};
+  document.getElementById('tabelaProdutividadeDobra').innerHTML = ['hoje','semana','mes'].map(periodo=>{
+    const m = dados[periodo].manual, q = dados[periodo].maquina;
+    return `<tr>
+      <td>${labelPeriodo[periodo]}</td>
+      <td>${m.porMinuto.toFixed(2)}</td>
+      <td>${m.porHora.toFixed(1)}</td>
+      <td>${q.porMinuto.toFixed(2)}</td>
+      <td>${q.porHora.toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCardProdutividadeDobra(){
+  const card = document.getElementById('cardProdutividadeRevisao');
+  card.style.display = dashArea==='RevisaoDobra' ? '' : 'none';
+  if(dashArea!=='RevisaoDobra') return;
+  document.getElementById('produtividadeRevisaoConteudo').style.display = produtividadeDobraAberta ? '' : 'none';
+  document.getElementById('btnToggleProdutividadeRevisao').textContent = produtividadeDobraAberta ? 'Ocultar' : 'Ver médias';
+  if(produtividadeDobraAberta) renderProdutividadeDobra();
+}
+
+document.getElementById('btnToggleProdutividadeRevisao').addEventListener('click', ()=>{
+  produtividadeDobraAberta = !produtividadeDobraAberta;
+  renderCardProdutividadeDobra();
+});
+
 function extrairHoraInicial(horario){
   const m = String(horario||'').match(/(\d{1,2})/);
   if(!m) return null;
@@ -2617,6 +2714,7 @@ function renderRelatorioDetalhe(){
   document.getElementById('statPessoas').textContent = new Set(filtradas.map(e=>e.funcionaria)).size;
 
   renderPeriodoCaseado(filtradas);
+  renderCardProdutividadeDobra();
   renderHorarios(filtradas);
   renderChartCosturaHorarios(filtradas);
   renderInsights(filtradas);
