@@ -196,6 +196,9 @@
   td{padding:9px 6px;border-bottom:1px solid var(--border);}
   tr:last-child td{border-bottom:none;}
   .table-scroll{overflow-x:auto;}
+  .produtividade-funcionaria{margin-bottom:18px;}
+  .produtividade-funcionaria:last-child{margin-bottom:0;}
+  .produtividade-funcionaria-nome{font-size:14px;font-weight:700;color:var(--primary);margin-bottom:8px;}
   .tabela-detalhe-cabecalho{cursor:pointer;}
   .tabela-detalhe-cabecalho:active{background:var(--primary-soft);}
   .expandir-seta{color:var(--accent);font-weight:700;width:16px;}
@@ -507,12 +510,7 @@
           <button type="button" class="btn btn-ghost btn-sm" id="btnToggleProdutividadeRevisao" style="white-space:nowrap;">Ver médias</button>
         </div>
         <div id="produtividadeRevisaoConteudo" style="display:none;margin-top:14px;">
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th>Período</th><th>Manual (pç/min)</th><th>Manual (pç/h)</th><th>Máquina (pç/min)</th><th>Máquina (pç/h)</th></tr></thead>
-              <tbody id="tabelaProdutividadeDobra"></tbody>
-            </table>
-          </div>
+          <div id="produtividadeRevisaoPorFuncionaria"></div>
           <div class="empty-hint" style="margin-top:6px;">Considerando 8,8h de trabalho por dia. A média conta só os dias com lançamento no período.</div>
         </div>
       </div>
@@ -2350,9 +2348,10 @@ function classificarTarefaDobra(tarefa){
   return null;
 }
 
-function calcularProdutividadeDobra(){
+function calcularProdutividadeDobraPorFuncionaria(){
   const base = (dashArea && dashAreaCarregada===dashArea && entriesDetalheArea) ? entriesDetalheArea : entries;
   const todasRevisao = base.filter(e=>e.area==='RevisaoDobra');
+  const funcionarias = [...new Set(todasRevisao.map(e=>e.funcionaria))].sort((a,b)=>a.localeCompare(b));
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const seteDiasAtras = new Date(hoje); seteDiasAtras.setDate(hoje.getDate()-6);
@@ -2364,41 +2363,66 @@ function calcularProdutividadeDobra(){
   }
 
   const resultado = {};
-  ['hoje','semana','mes'].forEach(periodo=>{
-    const porTipo = { manual:{pecas:0, dias:new Set()}, maquina:{pecas:0, dias:new Set()} };
-    todasRevisao.filter(e=>dentroPeriodo(e,periodo)).forEach(e=>{
-      const tipo = classificarTarefaDobra(e.tarefa);
-      if(!tipo) return;
-      porTipo[tipo].pecas += (e.quantidade||0);
-      porTipo[tipo].dias.add(e.data);
-    });
-    resultado[periodo] = {};
-    ['manual','maquina'].forEach(tipo=>{
-      const dias = porTipo[tipo].dias.size;
-      const horas = dias * HORAS_TRABALHADAS_POR_DIA;
-      const minutos = horas * 60;
-      resultado[periodo][tipo] = {
-        pecas: porTipo[tipo].pecas, dias,
-        porHora: horas>0 ? porTipo[tipo].pecas/horas : 0,
-        porMinuto: minutos>0 ? porTipo[tipo].pecas/minutos : 0
-      };
+  funcionarias.forEach(func=>{
+    const doFuncionaria = todasRevisao.filter(e=>e.funcionaria===func);
+    resultado[func] = {};
+    ['hoje','semana','mes'].forEach(periodo=>{
+      const porTipo = { manual:{pecas:0, dias:new Set()}, maquina:{pecas:0, dias:new Set()} };
+      doFuncionaria.filter(e=>dentroPeriodo(e,periodo)).forEach(e=>{
+        const tipo = classificarTarefaDobra(e.tarefa);
+        if(!tipo) return;
+        porTipo[tipo].pecas += (e.quantidade||0);
+        porTipo[tipo].dias.add(e.data);
+      });
+      resultado[func][periodo] = {};
+      ['manual','maquina'].forEach(tipo=>{
+        const dias = porTipo[tipo].dias.size;
+        const horas = dias * HORAS_TRABALHADAS_POR_DIA;
+        const minutos = horas * 60;
+        resultado[func][periodo][tipo] = {
+          pecas: porTipo[tipo].pecas, dias,
+          porHora: horas>0 ? porTipo[tipo].pecas/horas : 0,
+          porMinuto: minutos>0 ? porTipo[tipo].pecas/minutos : 0
+        };
+      });
     });
   });
   return resultado;
 }
 
 function renderProdutividadeDobra(){
-  const dados = calcularProdutividadeDobra();
+  const dados = calcularProdutividadeDobraPorFuncionaria();
   const labelPeriodo = {hoje:'Hoje', semana:'Últimos 7 dias', mes:'Este mês'};
-  document.getElementById('tabelaProdutividadeDobra').innerHTML = ['hoje','semana','mes'].map(periodo=>{
-    const m = dados[periodo].manual, q = dados[periodo].maquina;
-    return `<tr>
-      <td>${labelPeriodo[periodo]}</td>
-      <td>${m.porMinuto.toFixed(2)}</td>
-      <td>${m.porHora.toFixed(1)}</td>
-      <td>${q.porMinuto.toFixed(2)}</td>
-      <td>${q.porHora.toFixed(1)}</td>
-    </tr>`;
+  const funcionarias = Object.keys(dados);
+  const container = document.getElementById('produtividadeRevisaoPorFuncionaria');
+
+  if(funcionarias.length===0){
+    container.innerHTML = '<div class="empty-hint">Nenhum lançamento de dobra ainda.</div>';
+    return;
+  }
+
+  container.innerHTML = funcionarias.map(func=>{
+    const linhas = ['hoje','semana','mes'].map(periodo=>{
+      const m = dados[func][periodo].manual, q = dados[func][periodo].maquina;
+      return `<tr>
+        <td>${labelPeriodo[periodo]}</td>
+        <td>${m.porMinuto.toFixed(2)}</td>
+        <td>${m.porHora.toFixed(1)}</td>
+        <td>${q.porMinuto.toFixed(2)}</td>
+        <td>${q.porHora.toFixed(1)}</td>
+      </tr>`;
+    }).join('');
+    return `
+      <div class="produtividade-funcionaria">
+        <div class="produtividade-funcionaria-nome">${esc(func)}</div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Período</th><th>Manual (pç/min)</th><th>Manual (pç/h)</th><th>Máquina (pç/min)</th><th>Máquina (pç/h)</th></tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
   }).join('');
 }
 
