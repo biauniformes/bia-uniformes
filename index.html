@@ -280,7 +280,7 @@
   .dash-team-num{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;color:#fff;line-height:1;}
   .dash-team-num span{display:block;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#8A8A8A;margin-top:4px;}
   .dash-team-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:11.5px;color:#8A8A8A;font-weight:600;}
-  .dash-trend{padding:2px 8px;border-radius:999px;font-weight:700;}
+  .dash-trend{padding:2px 8px;border-radius:999px;font-weight:700;background:rgba(255,255,255,.1);color:#B8B4AB;}
   .dash-trend.up{background:rgba(63,122,87,.28);color:#8FE0B0;}
   .dash-trend.down{background:rgba(178,58,72,.28);color:#F3A0AC;}
 
@@ -488,6 +488,17 @@
         <button class="pill" data-periodo="semana">Últimos 7 dias</button>
         <button class="pill" data-periodo="mes">Este mês</button>
         <button class="pill" data-periodo="tudo">Tudo</button>
+        <button class="pill" data-periodo="personalizado">📅 Escolher datas</button>
+      </div>
+      <div class="row2" id="periodoPersonalizadoWrap" style="display:none;margin-bottom:14px;">
+        <div class="field">
+          <label>De</label>
+          <input type="date" id="periodoPersonalizadoDe">
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input type="date" id="periodoPersonalizadoAte">
+        </div>
       </div>
 
       <div class="stat-grid">
@@ -1204,6 +1215,8 @@ let entries = [];
 let activeAreaLancar = 'Costura';
 let activeAreaConfig = 'Costura';
 let activePeriodo = 'hoje';
+let activePeriodoCustomDe = '';
+let activePeriodoCustomAte = '';
 let dashArea = null; // null = tela inicial do dashboard (grid de equipes); senão, chave de área ou 'todas'
 // O poll de fundo (subscribeLancamentos) só traz os 300 lançamentos mais
 // recentes de TODAS as áreas juntas, pra não pesar na cota do Firebase —
@@ -2263,8 +2276,17 @@ document.querySelectorAll('#periodoFiltro .pill').forEach(btn=>{
     document.querySelectorAll('#periodoFiltro .pill').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     activePeriodo = btn.dataset.periodo;
+    document.getElementById('periodoPersonalizadoWrap').style.display = activePeriodo==='personalizado' ? '' : 'none';
     renderRelatorio();
   });
+});
+document.getElementById('periodoPersonalizadoDe').addEventListener('change', (e)=>{
+  activePeriodoCustomDe = e.target.value;
+  if(activePeriodo==='personalizado') renderRelatorio();
+});
+document.getElementById('periodoPersonalizadoAte').addEventListener('change', (e)=>{
+  activePeriodoCustomAte = e.target.value;
+  if(activePeriodo==='personalizado') renderRelatorio();
 });
 document.getElementById('btnDashBack').addEventListener('click', voltarDashboardHome);
 document.getElementById('btnVerTudo').addEventListener('click', ()=>abrirEquipeDashboard('todas'));
@@ -2327,6 +2349,10 @@ function filtrarEntradasPeriodo(){
     }
     if(activePeriodo==='mes'){
       return d.getMonth()===hoje.getMonth() && d.getFullYear()===hoje.getFullYear();
+    }
+    if(activePeriodo==='personalizado'){
+      if(!activePeriodoCustomDe || !activePeriodoCustomAte) return false;
+      return e.data>=activePeriodoCustomDe && e.data<=activePeriodoCustomAte;
     }
     return true;
   });
@@ -2830,7 +2856,9 @@ function renderDashboardHome(){
   const areasOrd = Object.entries(porArea).sort((a,b)=>b[1]-a[1]);
   const insightEl = document.getElementById('dashHeroInsight');
   if(areasOrd.length===0){
-    insightEl.textContent = 'Nenhum lançamento hoje ainda.';
+    insightEl.textContent = totalOntem>0
+      ? `Nenhum lançamento hoje ainda. Ontem foram ${totalOntem} peças produzidas.`
+      : 'Nenhum lançamento hoje ainda.';
   } else {
     insightEl.textContent = `✨ ${AREAS[areasOrd[0][0]].label} lidera hoje com ${areasOrd[0][1]} peças produzidas.`;
   }
@@ -2842,11 +2870,14 @@ function renderDashboardHome(){
     const ontemQtd = ontemEntries.filter(e=>e.area===areaKey).reduce((s,e)=>s+e.quantidade,0);
     const pessoas = new Set(hojeEntries.filter(e=>e.area===areaKey).map(e=>e.funcionaria)).size;
     let trendHtml = '';
-    if(ontemQtd > 0){
+    if(hojeQtd > 0 && ontemQtd > 0){
       const variacao = Math.round(((hojeQtd-ontemQtd)/ontemQtd)*100);
       trendHtml = `<span class="dash-trend ${variacao>=0?'up':'down'}">${variacao>=0?'▲':'▼'} ${Math.abs(variacao)}%</span>`;
     } else if(hojeQtd > 0){
       trendHtml = `<span class="dash-trend up">novo</span>`;
+    } else if(ontemQtd > 0){
+      // hoje ainda não começou — mostra ontem em vez de um "▼100%" alarmante
+      trendHtml = `<span class="dash-trend">ontem: ${ontemQtd}</span>`;
     }
     return `
       <button class="dash-team-card" style="--team-color:${area.color}" data-area="${areaKey}">
