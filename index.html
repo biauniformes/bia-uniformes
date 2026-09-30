@@ -510,8 +510,18 @@
           <button type="button" class="btn btn-ghost btn-sm" id="btnToggleProdutividadeRevisao" style="white-space:nowrap;">Ver médias</button>
         </div>
         <div id="produtividadeRevisaoConteudo" style="display:none;margin-top:14px;">
+          <div class="row2" style="margin-bottom:14px;">
+            <div class="field">
+              <label>De (opcional)</label>
+              <input type="date" id="produtividadeDobraDe">
+            </div>
+            <div class="field">
+              <label>Até (opcional)</label>
+              <input type="date" id="produtividadeDobraAte">
+            </div>
+          </div>
           <div id="produtividadeRevisaoPorFuncionaria"></div>
-          <div class="empty-hint" style="margin-top:6px;">Considerando 8,8h de trabalho por dia. A média conta só os dias com lançamento no período.</div>
+          <div class="empty-hint" style="margin-top:6px;">Considerando 8,8h de trabalho por dia. A média conta só os dias com lançamento no período. Pra ver um dia específico, preencha "De" e "Até" com a mesma data.</div>
         </div>
       </div>
 
@@ -2355,10 +2365,16 @@ function calcularProdutividadeDobraPorFuncionaria(){
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const seteDiasAtras = new Date(hoje); seteDiasAtras.setDate(hoje.getDate()-6);
+  const customDe = document.getElementById('produtividadeDobraDe').value;
+  const customAte = document.getElementById('produtividadeDobraAte').value;
+  const temCustom = !!(customDe && customAte);
+  const periodos = temCustom ? ['hoje','semana','mes','personalizado'] : ['hoje','semana','mes'];
+
   function dentroPeriodo(e, periodo){
     const d = new Date(e.data+'T00:00:00');
     if(periodo==='hoje') return d.getTime()===hoje.getTime();
     if(periodo==='semana') return d>=seteDiasAtras && d<=hoje;
+    if(periodo==='personalizado') return e.data>=customDe && e.data<=customAte;
     return d.getMonth()===hoje.getMonth() && d.getFullYear()===hoje.getFullYear(); // mes
   }
 
@@ -2366,7 +2382,7 @@ function calcularProdutividadeDobraPorFuncionaria(){
   funcionarias.forEach(func=>{
     const doFuncionaria = todasRevisao.filter(e=>e.funcionaria===func);
     resultado[func] = {};
-    ['hoje','semana','mes'].forEach(periodo=>{
+    periodos.forEach(periodo=>{
       const porTipo = { manual:{pecas:0, dias:new Set()}, maquina:{pecas:0, dias:new Set()} };
       doFuncionaria.filter(e=>dentroPeriodo(e,periodo)).forEach(e=>{
         const tipo = classificarTarefaDobra(e.tarefa);
@@ -2387,12 +2403,19 @@ function calcularProdutividadeDobraPorFuncionaria(){
       });
     });
   });
-  return resultado;
+  return { resultado, periodos, customDe, customAte };
 }
 
 function renderProdutividadeDobra(){
-  const dados = calcularProdutividadeDobraPorFuncionaria();
-  const labelPeriodo = {hoje:'Hoje', semana:'Últimos 7 dias', mes:'Este mês'};
+  const { resultado: dados, periodos } = calcularProdutividadeDobraPorFuncionaria();
+  const labelPeriodo = {
+    hoje:'Hoje', semana:'Últimos 7 dias', mes:'Este mês',
+    personalizado: (()=>{
+      const de = document.getElementById('produtividadeDobraDe').value;
+      const ate = document.getElementById('produtividadeDobraAte').value;
+      return de===ate ? toBR(de) : `${toBR(de)} a ${toBR(ate)}`;
+    })()
+  };
   const funcionarias = Object.keys(dados);
   const container = document.getElementById('produtividadeRevisaoPorFuncionaria');
 
@@ -2402,7 +2425,7 @@ function renderProdutividadeDobra(){
   }
 
   container.innerHTML = funcionarias.map(func=>{
-    const linhas = ['hoje','semana','mes'].map(periodo=>{
+    const linhas = periodos.map(periodo=>{
       const m = dados[func][periodo].manual, q = dados[func][periodo].maquina;
       return `<tr>
         <td>${labelPeriodo[periodo]}</td>
@@ -2425,6 +2448,9 @@ function renderProdutividadeDobra(){
     `;
   }).join('');
 }
+
+document.getElementById('produtividadeDobraDe').addEventListener('change', renderProdutividadeDobra);
+document.getElementById('produtividadeDobraAte').addEventListener('change', renderProdutividadeDobra);
 
 function renderCardProdutividadeDobra(){
   const card = document.getElementById('cardProdutividadeRevisao');
